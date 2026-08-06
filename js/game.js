@@ -12,7 +12,7 @@ import * as THREE from '../lib/three.module.min.js';
 import { CONFIG } from './config.js';
 import { prepareConfig, RoundDirector, rand, pickWeighted } from './rng.js';
 import { buildWhole, buildHalves, applyGoldSkin, applyGlow } from './fruits.js';
-import { EffectSystem } from './effects.js';
+import { EffectSystem, GoldAura } from './effects.js';
 import { PrizeLabel } from './labels.js';
 import { sfxSlice, sfxSplat, sfxBoom, sfxWin, sfxGolden, sfxFrenzy, unlockAudio } from './sfx.js';
 
@@ -253,9 +253,19 @@ export class Game {
     group.position.set(x, bottom - 1.5, rand(-0.8, 0.8));
     this.scene.add(group);
 
+    // Radiating aura so the bonus item reads as special at a glance. Kept as
+    // a sibling of the fruit (position-synced each frame) so the fruit's spin
+    // doesn't tumble the sparkle orbits.
+    let aura = null;
+    if (golden) {
+      aura = new GoldAura(def.radius);
+      aura.group.position.copy(group.position);
+      this.scene.add(aura.group);
+    }
+
     const ph = this.cfg.physics;
     const fruit = {
-      def, group, golden,
+      def, group, golden, aura,
       vel: new THREE.Vector3(
         -x * rand(0.06, 0.22) + rand(-ph.driftX, ph.driftX) * 0.4,
         rand(ph.launchYMin, ph.launchYMax),
@@ -281,6 +291,10 @@ export class Game {
 
   removeFruit(fruit, keepLabel) {
     this.scene.remove(fruit.group);
+    if (fruit.aura) {
+      this.scene.remove(fruit.aura.group);
+      fruit.aura.dispose();
+    }
     if (keepLabel) this.deadLabels.push(fruit.label);
     else fruit.label.dispose();
     const i = this.fruits.indexOf(fruit);
@@ -325,6 +339,10 @@ export class Game {
       f.group.rotation.x += f.angVel.x * dt;
       f.group.rotation.y += f.angVel.y * dt;
       f.group.rotation.z += f.angVel.z * dt;
+      if (f.aura) {
+        f.aura.group.position.copy(f.group.position);
+        f.aura.update(dt);
+      }
       labelPos.copy(f.group.position);
       labelPos.y += f.def.radius + 1.1;
       f.label.update(dt, labelPos);

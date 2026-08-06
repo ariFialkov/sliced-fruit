@@ -18,6 +18,112 @@ function splatMat(color) {
   });
 }
 
+// --- gold aura ---------------------------------------------------------------
+// Soft radial glow + twinkling sparkles that ride along with a golden fruit,
+// so the bonus item is unmistakable at a glance.
+
+let auraTexMemo = null;
+function auraTexture() {
+  if (auraTexMemo) return auraTexMemo;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255, 226, 120, 0.85)');
+  g.addColorStop(0.35, 'rgba(255, 200, 60, 0.4)');
+  g.addColorStop(1, 'rgba(255, 190, 40, 0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  auraTexMemo = new THREE.CanvasTexture(c);
+  auraTexMemo.colorSpace = THREE.SRGBColorSpace;
+  return auraTexMemo;
+}
+
+let sparkleTexMemo = null;
+function sparkleTexture() {
+  if (sparkleTexMemo) return sparkleTexMemo;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 1, 32, 32, 30);
+  g.addColorStop(0, 'rgba(255, 250, 220, 1)');
+  g.addColorStop(0.25, 'rgba(255, 220, 90, 0.9)');
+  g.addColorStop(1, 'rgba(255, 220, 90, 0)');
+  ctx.fillStyle = g;
+  // 4-point star: two slim lozenges over the radial core
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.fillStyle = 'rgba(255, 250, 230, 0.95)';
+  ctx.beginPath();
+  ctx.moveTo(32, 2); ctx.lineTo(37, 32); ctx.lineTo(32, 62); ctx.lineTo(27, 32);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(2, 32); ctx.lineTo(32, 27); ctx.lineTo(62, 32); ctx.lineTo(32, 37);
+  ctx.closePath(); ctx.fill();
+  sparkleTexMemo = new THREE.CanvasTexture(c);
+  sparkleTexMemo.colorSpace = THREE.SRGBColorSpace;
+  return sparkleTexMemo;
+}
+
+export class GoldAura {
+  constructor(radius) {
+    this.group = new THREE.Group();
+    this.t = rand(0, 10);
+
+    this.glowMat = new THREE.SpriteMaterial({
+      map: auraTexture(), transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, opacity: 0.9,
+    });
+    this.glow = new THREE.Sprite(this.glowMat);
+    this.glowBase = radius * 4.6;
+    this.glow.scale.setScalar(this.glowBase);
+    this.glow.renderOrder = 5;
+    this.group.add(this.glow);
+
+    this.sparks = [];
+    for (let i = 0; i < 5; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: sparkleTexture(), transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const s = new THREE.Sprite(mat);
+      s.renderOrder = 6;
+      this.group.add(s);
+      this.sparks.push({
+        sprite: s, mat,
+        angle: rand(0, Math.PI * 2),
+        speed: rand(0.8, 1.6) * (Math.random() < 0.5 ? -1 : 1),
+        orbit: radius * rand(1.35, 1.85),
+        tilt: rand(-0.5, 0.5),
+        phase: rand(0, Math.PI * 2),
+        size: radius * rand(0.34, 0.55),
+      });
+    }
+  }
+
+  update(dt) {
+    this.t += dt;
+    const pulse = 1 + 0.09 * Math.sin(this.t * 3.2);
+    this.glow.scale.setScalar(this.glowBase * pulse);
+    this.glowMat.opacity = 0.75 + 0.2 * Math.sin(this.t * 3.2);
+    for (const sp of this.sparks) {
+      sp.angle += sp.speed * dt;
+      sp.sprite.position.set(
+        Math.cos(sp.angle) * sp.orbit,
+        Math.sin(sp.angle) * sp.orbit * (1 - Math.abs(sp.tilt) * 0.4),
+        Math.sin(sp.angle * 2) * sp.tilt,
+      );
+      const tw = 0.35 + 0.65 * Math.abs(Math.sin(this.t * 3.4 + sp.phase));
+      sp.mat.opacity = tw;
+      sp.sprite.scale.setScalar(sp.size * (0.6 + 0.5 * tw));
+    }
+  }
+
+  dispose() {
+    this.glowMat.dispose();
+    for (const sp of this.sparks) sp.mat.dispose();
+  }
+}
+
 export class EffectSystem {
   constructor(scene) {
     this.scene = scene;
