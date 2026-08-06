@@ -11,10 +11,19 @@
 import * as THREE from '../lib/three.module.min.js';
 import { CONFIG } from './config.js';
 import { prepareConfig, RoundDirector, rand, pickWeighted } from './rng.js';
-import { buildWhole, buildHalves } from './fruits.js';
+import { buildWhole, buildHalves, applyGoldSkin, applyGlow } from './fruits.js';
 import { EffectSystem } from './effects.js';
 import { PrizeLabel } from './labels.js';
-import { sfxSlice, sfxSplat, sfxBoom, sfxWin, unlockAudio } from './sfx.js';
+import { sfxSlice, sfxSplat, sfxBoom, sfxWin, sfxGolden, sfxFrenzy, unlockAudio } from './sfx.js';
+
+const SKY_DAY = ['#6fbdea', '#9ed9f5', '#d6f1fc'];
+const SKY_FRENZY = ['#141033', '#251a4d', '#3a2b66'];
+
+function lerpHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const c = (sh) => Math.round(((pa >> sh) & 255) + (((pb >> sh) & 255) - ((pa >> sh) & 255)) * t);
+  return `rgb(${c(16)},${c(8)},${c(0)})`;
+}
 
 const BALANCE_KEY = 'sliced-fruit-balance';
 
@@ -38,6 +47,7 @@ export class Game {
     this.trail = [];
     this.pointerDown = false;
     this.shake = 0;
+    this.frenzy = { scheduledAt: null, active: false, until: 0, mix: 0 };
 
     this.director = new RoundDirector(this.cfg);
 
@@ -58,7 +68,13 @@ export class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     this.scene = new THREE.Scene();
-    this.scene.background = this.makeBackdrop();
+    this.skyCanvas = document.createElement('canvas');
+    this.skyCanvas.width = 2;
+    this.skyCanvas.height = 512;
+    this.skyTex = new THREE.CanvasTexture(this.skyCanvas);
+    this.skyTex.colorSpace = THREE.SRGBColorSpace;
+    this.scene.background = this.skyTex;
+    this.paintSky(0);
 
     this.camDist = 15;
     this.camY = 2.6;
@@ -66,28 +82,31 @@ export class Game {
     this.camera.position.set(0, this.camY, this.camDist);
     this.camera.lookAt(0, this.camY, 0);
 
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xa8c8dd, 1.35));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.3);
-    sun.position.set(5, 10, 7);
-    this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xfff3d6, 0.55);
-    fill.position.set(-6, 2, 8);
-    this.scene.add(fill);
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0xa8c8dd, 1.35);
+    this.scene.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xffffff, 2.3);
+    this.sun.position.set(5, 10, 7);
+    this.scene.add(this.sun);
+    this.fill = new THREE.DirectionalLight(0xfff3d6, 0.55);
+    this.fill.position.set(-6, 2, 8);
+    this.scene.add(this.fill);
   }
 
-  makeBackdrop() {
-    const c = document.createElement('canvas');
-    c.width = 2; c.height = 512;
-    const ctx = c.getContext('2d');
+  // mix 0 = day, 1 = frenzy night. Repaints the sky gradient and dims lights.
+  paintSky(mix) {
+    const ctx = this.skyCanvas.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, 512);
-    g.addColorStop(0, '#6fbdea');
-    g.addColorStop(0.55, '#9ed9f5');
-    g.addColorStop(1, '#d6f1fc');
+    SKY_DAY.forEach((day, i) => {
+      g.addColorStop([0, 0.55, 1][i], lerpHex(day, SKY_FRENZY[i], mix));
+    });
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 2, 512);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+    this.skyTex.needsUpdate = true;
+    if (this.hemi) {
+      this.hemi.intensity = THREE.MathUtils.lerp(1.35, 0.5, mix);
+      this.sun.intensity = THREE.MathUtils.lerp(2.3, 0.85, mix);
+      this.fill.intensity = THREE.MathUtils.lerp(0.55, 0.15, mix);
+    }
   }
 
   resize() {
@@ -172,11 +191,31 @@ export class Game {
     this.elapsed = 0;
     this.spawnTimer = 0.4;
     this.director.startRound(bet);
+
+    // Maybe schedule this round's frenzy window.
+    const fz = this.cfg.frenzy;
+    this.frenzy.active = false;
+    this.frenzy.scheduledAt =
+      Math.random() < fz.chance
+        ? rand(fz.earliestStart, this.cfg.roundSeconds - fz.duration - fz.latestEndMargin)
+        : null;
+
     this.pushHud();
     return true;
   }
 
+  setFrenzy(on) {
+    this.frenzy.active = on;
+    if (on) {
+      this.frenzy.until = this.elapsed + this.cfg.frenzy.duration;
+      sfxFrenzy();
+    }
+    this.cb.onFrenzy?.(on);
+  }
+
   endRound() {
+    if (this.frenzy.active) this.setFrenzy(false);
+    this.frenzy.scheduledAt = null;
     const total = this.director.runningTotal;
     const payout = this.cfg.floorPayout ? Math.max(0, total) : total;
     this.balance += payout;
@@ -197,6 +236,18 @@ export class Game {
   spawnFruit() {
     const def = pickWeighted(this.cfg.fruits, f => f.weight);
     const group = buildWhole(def);
+
+    // Rare golden bonus fruit — never in the final seconds of a round, so the
+    // director has time to re-balance after the multiplier lands.
+    const gd = this.cfg.golden;
+    const goldenAllowed =
+      this.mode !== 'playing' ||
+      this.elapsed < this.cfg.roundSeconds - gd.cutoffSeconds;
+    const golden = goldenAllowed && Math.random() < gd.chance;
+
+    if (golden) applyGoldSkin(group);
+    else if (this.frenzy.active) applyGlow(group);
+
     const x = rand(-this.halfW * 0.65, this.halfW * 0.65);
     const bottom = this.camY - this.halfH;
     group.position.set(x, bottom - 1.5, rand(-0.8, 0.8));
@@ -204,18 +255,25 @@ export class Game {
 
     const ph = this.cfg.physics;
     const fruit = {
-      def, group,
+      def, group, golden,
       vel: new THREE.Vector3(
         -x * rand(0.06, 0.22) + rand(-ph.driftX, ph.driftX) * 0.4,
         rand(ph.launchYMin, ph.launchYMax),
         0,
       ),
       angVel: new THREE.Vector3(rand(-ph.spin, ph.spin), rand(-ph.spin, ph.spin), rand(-ph.spin, ph.spin)),
-      label: new PrizeLabel(
-        this.scene,
-        () => def.paytable.map(e => e.mult * this.shareFor(def)),
-        v => this.cb.formatMoney(v),
-      ),
+      label: golden
+        ? new PrizeLabel(
+            this.scene,
+            () => gd.multipliers.map(e => e.m),
+            m => `×${m}`,
+            { golden: true },
+          )
+        : new PrizeLabel(
+            this.scene,
+            () => def.paytable.map(e => e.mult * this.shareFor(def)),
+            v => this.cb.formatMoney(v),
+          ),
       sliced: false,
     };
     this.fruits.push(fruit);
@@ -231,8 +289,10 @@ export class Game {
 
   updateSpawning(dt) {
     const s = this.cfg.spawn;
+    const fz = this.cfg.frenzy;
     const ambient = this.mode !== 'playing';
-    const max = ambient ? s.ambientMaxConcurrent : s.maxConcurrent;
+    let max = ambient ? s.ambientMaxConcurrent : s.maxConcurrent;
+    if (this.frenzy.active) max = fz.maxConcurrent;
     if (this.mode === 'countdown') return;
 
     this.spawnTimer -= dt;
@@ -246,6 +306,10 @@ export class Game {
       const p = this.elapsed / this.cfg.roundSeconds;
       batch = Math.round(rand(s.minBatch, s.minBatch + (s.maxBatch - s.minBatch) * p));
       this.spawnTimer = THREE.MathUtils.lerp(s.startInterval, s.endInterval, p) * rand(0.75, 1.25);
+      if (this.frenzy.active) {
+        batch += fz.extraBatch;
+        this.spawnTimer *= fz.spawnIntervalScale;
+      }
     }
     for (let i = 0; i < batch && this.fruits.length < max; i++) this.spawnFruit();
   }
@@ -324,14 +388,32 @@ export class Game {
 
   sliceFruit(f, dx, dy) {
     f.sliced = true;
-    const result = this.director.onSlice(f.def);
 
     // Orient the cut from the swipe: halves separate perpendicular to the
     // swipe direction, tilted a little toward the camera so the flesh shows.
     const swipe = new THREE.Vector3(dx, -dy, 0).normalize();
     const sep = new THREE.Vector3(-swipe.y, swipe.x, 0).add(new THREE.Vector3(0, 0, 0.7)).normalize();
-
     const pos = f.group.position.clone();
+
+    if (f.golden) {
+      // Bonus fruit: multiplies the round total, always a celebration.
+      const m = pickWeighted(this.cfg.golden.multipliers, e => e.w).m;
+      this.director.applyGolden(m);
+      const pieces = buildHalves(f.def);
+      applyGoldSkin(pieces.a);
+      applyGoldSkin(pieces.b);
+      const quat = new THREE.Quaternion().setFromUnitVectors(pieces.axis, sep);
+      this.effects.halves(pos, f.vel.clone(), pieces, quat, sep);
+      this.effects.juiceBurst(pos, 0xffd700, 18, 8);
+      this.effects.juiceBurst(pos, 0xfff3bf, 10, 5);
+      sfxGolden();
+      f.label.land(0, `×${m}!`);
+      this.removeFruit(f, true);
+      this.pushHud();
+      return;
+    }
+
+    const result = this.director.onSlice(f.def);
     if (result.value < 0) {
       // Disguised bomb — small explosion instead of a juicy split.
       this.effects.bombExplosion(pos, f.vel);
@@ -388,8 +470,24 @@ export class Game {
     if (this.mode === 'playing') {
       this.elapsed += dt;
       this.director.tick(this.elapsed);
+
+      // frenzy window
+      if (this.frenzy.scheduledAt !== null && !this.frenzy.active && this.elapsed >= this.frenzy.scheduledAt) {
+        this.frenzy.scheduledAt = null;
+        this.setFrenzy(true);
+      }
+      if (this.frenzy.active && this.elapsed >= this.frenzy.until) this.setFrenzy(false);
+
       this.pushHud();
       if (this.elapsed >= this.cfg.roundSeconds) this.endRound();
+    }
+
+    // ease the sky between day and frenzy night
+    const targetMix = this.frenzy.active ? 1 : 0;
+    if (Math.abs(this.frenzy.mix - targetMix) > 0.001) {
+      const step = dt * 1.6;
+      this.frenzy.mix += Math.sign(targetMix - this.frenzy.mix) * Math.min(step, Math.abs(targetMix - this.frenzy.mix));
+      this.paintSky(this.frenzy.mix);
     }
 
     this.updateSpawning(dt);

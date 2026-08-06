@@ -47,6 +47,17 @@ device you'll need HTTPS (any static host works: GitHub Pages, Netlify, etc.).
 - Whether a fruit is positive or a disguised bomb is decided **at slice time**,
   so it is indistinguishable beforehand by design.
 
+## Bonus features
+
+- **Golden fruit** — rare, unmistakably golden, never a bomb. Slicing one
+  multiplies the current round total (×1.5/×2/×3, weighted); if the total is
+  at or below zero it grants a flat bonus share instead. Goldens never spawn
+  in the final seconds, so the director can re-balance afterwards.
+- **Frenzy** — a rare mid-round bonus window: the sky goes dark, fruit glows,
+  and far more of it flies up for ~10 seconds. Frenzy values come from the
+  same director budget, so it adds spectacle and action without breaking RTP.
+  Tune both under `golden` and `frenzy` in `js/config.js`.
+
 ## Tuning
 
 Everything lives in [`js/config.js`](js/config.js):

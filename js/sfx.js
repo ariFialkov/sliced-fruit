@@ -79,6 +79,43 @@ export function sfxBoom() {
   src.start(t);
 }
 
+export function sfxGolden() {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  [660, 880, 1320].forEach((f, i) => {
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = f;
+    const g = ctx.createGain();
+    env(g, t + i * 0.07, 0.16, 0.35);
+    o.connect(g).connect(ctx.destination);
+    o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.4);
+  });
+}
+
+export function sfxFrenzy() {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(160, t);
+  o.frequency.exponentialRampToValueAtTime(900, t + 0.7);
+  const g = ctx.createGain();
+  env(g, t, 0.18, 0.8);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t + 0.85);
+
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(0.7);
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.setValueAtTime(2000, t);
+  const g2 = ctx.createGain();
+  env(g2, t + 0.15, 0.1, 0.6);
+  src.connect(hp).connect(g2).connect(ctx.destination);
+  src.start(t + 0.15);
+}
+
 export function sfxWin() {
   if (!ctx) return;
   const t = ctx.currentTime;

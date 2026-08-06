@@ -137,4 +137,19 @@ export class RoundDirector {
     this.runningTotal = round2(this.runningTotal + value);
     return { mult: outcome.mult, value };
   }
+
+  // Golden fruit: multiply the current total (steering later pulls the round
+  // back toward its target, so the economy self-corrects). If the total is
+  // at or below zero a multiplier would feel like nothing (or a punishment),
+  // so grant a flat bonus share instead.
+  applyGolden(mult) {
+    let add;
+    if (this.runningTotal > 0) {
+      add = round2(this.runningTotal * (mult - 1));
+    } else {
+      add = round2(this.share * mult);
+    }
+    this.runningTotal = round2(this.runningTotal + add);
+    return add;
+  }
 }

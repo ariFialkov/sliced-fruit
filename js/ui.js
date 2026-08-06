@@ -18,6 +18,8 @@ export class UI {
       total: $('hud-total'),
       hudBet: $('hud-bet'),
       vignette: $('vignette'),
+      frenzyGlow: $('frenzy-glow'),
+      frenzyBanner: $('frenzy-banner'),
       toast: $('toast'),
       menu: $('menu'),
       menuBalance: $('menu-balance'),
@@ -49,7 +51,22 @@ export class UI {
       onHud: (s) => this.renderHud(s),
       onRoundEnd: (summary) => this.showResults(summary),
       onBomb: () => this.flashVignette(),
+      onFrenzy: (on) => this.setFrenzy(on),
     };
+  }
+
+  setFrenzy(on) {
+    this.el.frenzyGlow.classList.toggle('hidden', !on);
+    if (on) {
+      this.show(this.el.frenzyBanner);
+      this.el.frenzyBanner.classList.remove('pop');
+      void this.el.frenzyBanner.offsetWidth;
+      this.el.frenzyBanner.classList.add('pop');
+      clearTimeout(this.frenzyBannerTimer);
+      this.frenzyBannerTimer = setTimeout(() => this.hide(this.el.frenzyBanner), 2200);
+    } else {
+      this.hide(this.el.frenzyBanner);
+    }
   }
 
   bind(game) {

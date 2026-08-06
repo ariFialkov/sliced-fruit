@@ -24,6 +24,35 @@ function mesh(geo, color) {
   return new THREE.Mesh(geo, fruitMat(color));
 }
 
+// Shiny golden variant for bonus fruit. Modest metalness — there is no
+// environment map, so high metalness would just read as black.
+const goldMat = new THREE.MeshStandardMaterial({
+  color: 0xffc832, metalness: 0.35, roughness: 0.3,
+  emissive: 0x996b00, emissiveIntensity: 0.45,
+});
+
+export function applyGoldSkin(group) {
+  group.traverse((o) => { if (o.isMesh) o.material = goldMat; });
+}
+
+// Self-lit variant used during frenzy so fruit glows in the darkness.
+const glowCache = new Map();
+
+export function applyGlow(group) {
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    const base = o.material;
+    let m = glowCache.get(base);
+    if (!m) {
+      m = base.clone();
+      m.emissive = base.color.clone();
+      m.emissiveIntensity = 0.55;
+      glowCache.set(base, m);
+    }
+    o.material = m;
+  });
+}
+
 function ball(r, color) {
   return mesh(new THREE.SphereGeometry(r, 24, 18), color);
 }
@@ -77,6 +106,81 @@ function sphereHalves(def, r, scaleY = 1, opts) {
   a.scale.y = scaleY;
   b.scale.y = scaleY;
   return { a, b, axis: new THREE.Vector3(0, 0, 1) };
+}
+
+// --- banana sweep ------------------------------------------------------------
+// A tube swept along a bezier "smile" curve with the radius tapering to
+// pointed tips — a proper banana silhouette, smooth from any angle.
+
+function bananaCurve(def) {
+  const R = def.radius;
+  return new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-R * 1.1, R * 0.5, 0),
+    new THREE.Vector3(0, -R * 1.0, 0),
+    new THREE.Vector3(R * 1.1, R * 0.5, 0),
+  );
+}
+
+function bananaGeometry(def, t0, t1) {
+  const R = def.radius;
+  const curve = bananaCurve(def);
+  const SEG = 24, RAD = 16;
+  const bin = new THREE.Vector3(0, 0, 1); // curve is planar, so this is constant
+  const positions = [];
+  const indices = [];
+  for (let i = 0; i <= SEG; i++) {
+    const t = t0 + (t1 - t0) * (i / SEG);
+    const p = curve.getPoint(t);
+    const tan = curve.getTangent(t);
+    const nor = new THREE.Vector3().crossVectors(tan, bin).normalize();
+    const rad = R * 0.36 * (0.05 + 0.95 * Math.pow(Math.sin(Math.PI * t), 0.7));
+    for (let j = 0; j <= RAD; j++) {
+      const a = (j / RAD) * Math.PI * 2;
+      const c = Math.cos(a) * rad, s = Math.sin(a) * rad;
+      positions.push(p.x + nor.x * c + bin.x * s, p.y + nor.y * c + bin.y * s, p.z + nor.z * c + bin.z * s);
+    }
+  }
+  for (let i = 0; i < SEG; i++) {
+    for (let j = 0; j < RAD; j++) {
+      const a = i * (RAD + 1) + j, b = a + RAD + 1;
+      indices.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// --- pineapple profile -------------------------------------------------------
+// Smooth lathe barrel; the halves reuse subsets of the same profile so the
+// cut lines up exactly.
+
+const PINE_PROFILE = [
+  [0.03, -0.78], [0.30, -0.74], [0.50, -0.55], [0.60, -0.25], [0.62, 0.0],
+  [0.58, 0.28], [0.48, 0.55], [0.26, 0.72], [0.03, 0.76],
+];
+
+function latheFrom(profile, R) {
+  const pts = profile.map(([r, y]) => new THREE.Vector2(r * R, y * R * 1.1));
+  return new THREE.LatheGeometry(pts, 28);
+}
+
+function pineappleCrown(def) {
+  const crown = new THREE.Group();
+  const topY = def.radius * 1.1 * 0.76;
+  const addLeaf = (angle, tilt, len, dist) => {
+    const leaf = mesh(new THREE.ConeGeometry(0.09, len, 8), def.accent);
+    leaf.scale.z = 0.55;
+    leaf.position.set(Math.cos(angle) * dist, topY + len * 0.42, Math.sin(angle) * dist);
+    leaf.rotation.set(Math.sin(angle) * tilt, 0, -Math.cos(angle) * tilt);
+    crown.add(leaf);
+  };
+  for (let i = 0; i < 6; i++) addLeaf((i / 6) * Math.PI * 2, 0.6, 0.55, 0.14);
+  for (let i = 0; i < 4; i++) addLeaf((i / 4) * Math.PI * 2 + 0.6, 0.28, 0.68, 0.07);
+  addLeaf(0, 0, 0.75, 0);
+  return crown;
 }
 
 // --- fruit builders ----------------------------------------------------------
@@ -134,83 +238,66 @@ const builders = {
   banana: {
     whole(def) {
       const g = new THREE.Group();
-      const R = def.radius * 0.95, arc = 2.3;
-      const geo = new THREE.TorusGeometry(R, def.radius * 0.34, 12, 28, arc);
-      geo.rotateZ(-arc / 2);       // arc symmetric about +x
-      geo.translate(-R * 0.75, 0, 0);
-      const body = mesh(geo, def.skin);
-      body.rotation.z = Math.PI / 2; // curve opens sideways, tips up
-      g.add(body);
-      const tip = mesh(new THREE.ConeGeometry(0.1, 0.22, 8), def.accent);
-      tip.position.set(0, def.radius * 1.05, 0);
-      g.add(tip);
+      g.add(mesh(bananaGeometry(def, 0, 1), def.skin));
+      // little brown nubs on both tips
+      const curve = bananaCurve(def);
+      for (const t of [0, 1]) {
+        const nub = mesh(new THREE.SphereGeometry(def.radius * 0.07, 8, 6), 0x6b4b2a);
+        nub.position.copy(curve.getPoint(t));
+        g.add(nub);
+      }
       return g;
     },
     halves(def) {
-      const R = def.radius * 0.95, tube = def.radius * 0.34, arc = 2.3;
-      const make = (start) => {
-        const grp = new THREE.Group();
-        const geo = new THREE.TorusGeometry(R, tube, 12, 14, arc / 2);
-        geo.rotateZ(start);
-        geo.translate(-R * 0.75, 0, 0);
-        grp.add(mesh(geo, def.skin));
-        // flesh cap at the cut end (mid-arc, at angle 0 after our rotations)
-        const cap = mesh(new THREE.CircleGeometry(tube, 16), def.flesh);
-        cap.position.set(R - R * 0.75, 0, 0);
-        grp.add(cap);
-        return grp;
-      };
-      const a = make(0);          // upper arc half
-      const b = make(-arc / 2);   // lower arc half
-      a.rotation.z = Math.PI / 2;
-      b.rotation.z = Math.PI / 2;
-      return { a, b, axis: new THREE.Vector3(0, 1, 0) };
+      const curve = bananaCurve(def);
+      const mid = curve.getPoint(0.5);
+      const capR = def.radius * 0.36;
+
+      const right = new THREE.Group(); // occupies x > 0
+      right.add(mesh(bananaGeometry(def, 0.5, 1), def.skin));
+      const capA = mesh(new THREE.CircleGeometry(capR, 18), def.flesh);
+      capA.rotation.y = -Math.PI / 2; // face -x, covering the cut
+      capA.position.copy(mid);
+      right.add(capA);
+
+      const left = new THREE.Group(); // occupies x < 0
+      left.add(mesh(bananaGeometry(def, 0, 0.5), def.skin));
+      const capB = mesh(new THREE.CircleGeometry(capR, 18), def.flesh);
+      capB.rotation.y = Math.PI / 2; // face +x
+      capB.position.copy(mid);
+      left.add(capB);
+
+      return { a: right, b: left, axis: new THREE.Vector3(1, 0, 0) };
     },
   },
 
   pineapple: {
     whole(def) {
       const g = new THREE.Group();
-      const body = mesh(new THREE.CylinderGeometry(def.radius * 0.52, def.radius * 0.62, def.radius * 1.5, 20), def.skin);
-      g.add(body);
-      // criss-cross texture hint: two accent bands
-      for (const y of [-0.3, 0.25]) {
-        const band = mesh(new THREE.TorusGeometry(def.radius * 0.56, 0.035, 8, 24), 0xc79420);
+      g.add(mesh(latheFrom(PINE_PROFILE, def.radius), def.skin));
+      // subtle accent bands following the barrel silhouette
+      for (const [r, y] of [[0.60, -0.25], [0.58, 0.28]]) {
+        const band = mesh(new THREE.TorusGeometry(def.radius * r, 0.028, 8, 32), 0xc79420);
         band.rotation.x = Math.PI / 2;
-        band.position.y = y * def.radius;
+        band.position.y = y * def.radius * 1.1;
         g.add(band);
       }
-      const crownY = def.radius * 0.75;
-      for (let i = 0; i < 5; i++) {
-        const spike = mesh(new THREE.ConeGeometry(0.13, 0.65, 8), def.accent);
-        const a = (i / 5) * Math.PI * 2;
-        spike.position.set(Math.cos(a) * 0.16, crownY + 0.28, Math.sin(a) * 0.16);
-        spike.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
-        g.add(spike);
-      }
-      const mid = mesh(new THREE.ConeGeometry(0.15, 0.8, 8), def.accent);
-      mid.position.y = crownY + 0.38;
-      g.add(mid);
+      g.add(pineappleCrown(def));
       return g;
     },
     halves(def) {
-      const h = def.radius * 0.75;
+      const capR = def.radius * 0.62;
+
       const top = new THREE.Group();
-      const topBody = mesh(new THREE.CylinderGeometry(def.radius * 0.52, def.radius * 0.57, h, 20), def.skin);
-      topBody.position.y = h / 2;
-      top.add(topBody);
-      const crown = mesh(new THREE.ConeGeometry(0.16, 0.8, 8), def.accent);
-      crown.position.y = h + 0.35;
-      top.add(crown);
-      const capT = mesh(new THREE.CircleGeometry(def.radius * 0.57, 24), def.flesh);
+      top.add(mesh(latheFrom(PINE_PROFILE.slice(4), def.radius), def.skin));
+      top.add(pineappleCrown(def));
+      const capT = mesh(new THREE.CircleGeometry(capR, 28), def.flesh);
       capT.rotation.x = Math.PI / 2; // face -y
       top.add(capT);
 
       const bottom = new THREE.Group();
-      const botBody = mesh(new THREE.CylinderGeometry(def.radius * 0.57, def.radius * 0.62, h, 20), def.skin);
-      botBody.position.y = -h / 2;
-      bottom.add(botBody);
-      const capB = mesh(new THREE.CircleGeometry(def.radius * 0.57, 24), def.flesh);
+      bottom.add(mesh(latheFrom(PINE_PROFILE.slice(0, 5), def.radius), def.skin));
+      const capB = mesh(new THREE.CircleGeometry(capR, 28), def.flesh);
       capB.rotation.x = -Math.PI / 2; // face +y
       bottom.add(capB);
 

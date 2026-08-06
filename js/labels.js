@@ -22,9 +22,11 @@ function roundRect(ctx, x, y, w, h, r) {
 export class PrizeLabel {
   // valuesFn returns the current list of possible prize amounts (currency),
   // so labels stay correct when the player changes their stake mid-flight.
-  constructor(scene, valuesFn, formatFn) {
+  // opts.golden switches to the gold styling used by bonus fruit.
+  constructor(scene, valuesFn, formatFn, opts = {}) {
     this.valuesFn = valuesFn;
     this.format = formatFn;
+    this.golden = !!opts.golden;
     this.canvas = document.createElement('canvas');
     this.canvas.width = W;
     this.canvas.height = H;
@@ -47,7 +49,11 @@ export class PrizeLabel {
 
   roll() {
     const values = this.valuesFn();
-    this.draw(this.format(pick(values)), '#ffe066', 'rgba(20,16,34,0.72)');
+    if (this.golden) {
+      this.draw(this.format(pick(values)), '#ffd700', 'rgba(72,50,4,0.85)');
+    } else {
+      this.draw(this.format(pick(values)), '#ffe066', 'rgba(20,16,34,0.72)');
+    }
   }
 
   draw(text, color, bg) {
@@ -64,11 +70,15 @@ export class PrizeLabel {
     this.tex.needsUpdate = true;
   }
 
-  land(value) {
+  land(value, textOverride) {
     this.landed = true;
     this.landT = 0;
+    if (this.golden) {
+      this.draw(textOverride ?? this.format(value), '#ffd700', 'rgba(96,66,4,0.92)');
+      return;
+    }
     const win = value > 0;
-    const text = (win ? '+' : '') + this.format(value);
+    const text = textOverride ?? ((win ? '+' : '') + this.format(value));
     this.draw(
       text,
       win ? '#69f0a0' : '#ff6b6b',

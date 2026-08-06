@@ -145,6 +145,31 @@ export const CONFIG = {
     },
   ],
 
+  // Golden bonus fruit: rare, unmistakably golden, never a bomb. Slicing one
+  // multiplies the current round total (or grants a flat bonus share if the
+  // total is at/below zero, so it always feels like a win).
+  golden: {
+    chance: 0.05,        // probability per spawned fruit
+    cutoffSeconds: 10,   // never spawns in the last N seconds (gives the
+                         // director time to re-balance after a multiplier)
+    multipliers: [
+      { m: 1.5, w: 60 }, { m: 2, w: 30 }, { m: 3, w: 10 },
+    ],
+  },
+
+  // Frenzy: a rare mid-round bonus period — the sky goes dark, fruit glows,
+  // and way more of it flies up for a few seconds. Values still come from the
+  // same director budget, so frenzy adds spectacle and action, not free EV.
+  frenzy: {
+    chance: 0.3,             // probability a round gets a frenzy at all
+    duration: 10,            // seconds
+    earliestStart: 6,        // seconds into the round
+    latestEndMargin: 4,      // must finish this many seconds before time-up
+    spawnIntervalScale: 0.38,// spawn much faster…
+    extraBatch: 2,           // …and more per batch…
+    maxConcurrent: 12,       // …with a higher on-screen cap
+  },
+
   spawn: {
     // In-round pacing: interval eases from `startInterval` to `endInterval`
     // over the round, batch size ramps too.
