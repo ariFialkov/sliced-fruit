@@ -35,8 +35,7 @@
       </div>
     </div>
     <div id="hud-bottom">
-      <div id="stake-label">Stake $1.00</div>
-      <div id="stake-chips"></div>
+      <div id="hud-bet">Bet $10.00</div>
     </div>
   </div>
 
@@ -46,15 +45,17 @@
   <div id="menu" class="overlay">
     <div class="panel">
       <h1>Sliced <em>Fruit</em></h1>
-      <p class="tagline">Swipe to slice. Every slice is a bet.</p>
+      <p class="tagline">Place your bet. Slice to collect.</p>
       <div class="menu-balance">Balance&nbsp;<span id="menu-balance">$0.00</span></div>
-      <button id="btn-play" class="btn-primary">Play &middot; 30s round</button>
+      <div id="bet-label">Your bet</div>
+      <div id="bet-chips"></div>
+      <button id="btn-play" class="btn-primary">Bet &amp; Play &middot; 30s</button>
       <button id="btn-funds" class="btn-ghost hidden">+ Add demo funds</button>
       <p class="howto">
-        Each fruit you slice places a bet and spins up a prize — watch the
-        rolling value above it land like a slot reel. Some fruit are bombs in
-        disguise and blow a hole in your total. When the timer hits zero, you
-        cash out whatever your total shows.
+        Place your bet, then slice everything you can — each fruit spins up a
+        prize that lands like a slot reel and adds to (or takes from) your
+        round total. Some fruit are bombs in disguise. When the timer hits
+        zero, you cash out whatever your total shows.
       </p>
     </div>
   </div>
@@ -66,9 +67,10 @@
   <div id="results" class="overlay hidden">
     <div class="panel">
       <h2>Time&rsquo;s up!</h2>
-      <div class="stat"><span>Total staked</span><span id="res-staked"></span></div>
-      <div class="stat"><span>Round result</span><span id="res-total"></span></div>
+      <div class="stat"><span>Bet</span><span id="res-bet"></span></div>
+      <div class="stat"><span>Round total</span><span id="res-total"></span></div>
       <div class="stat big"><span>Payout</span><span id="res-payout"></span></div>
+      <div class="stat"><span>Net</span><span id="res-net"></span></div>
       <div class="stat"><span>Balance</span><span id="res-balance"></span></div>
       <button id="btn-again" class="btn-primary">Play again</button>
       <button id="btn-menu" class="btn-ghost">Menu</button>

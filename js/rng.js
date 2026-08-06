@@ -1,15 +1,18 @@
 // ============================================================================
 // RNG + the round "director".
 //
-// Fairness model:
-//  * Before each round, one roll against `roundOutcomes` fixes the round's
-//    target: final total ≈ target × everything staked that round. The
-//    distribution's EV is normalised to CONFIG.rtp, so RTP holds per bet no
-//    matter how many fruits the player actually slices.
-//  * Each slice's result is sampled from the fruit's paytable, with weights
-//    tilted toward whatever per-slice value would close the gap to the target
-//    by the end of the 60s. The tilt starts negligible and ramps up, so the
-//    round drifts to its destination without visible rails.
+// Betting model: the player places ONE bet when the round starts. Before the
+// round, a single roll against `roundOutcomes` (EV normalised to CONFIG.rtp)
+// fixes the round's destination: targetTotal = bet × rolledMultiplier — so a
+// $20 bet trends to ~$20 by the end of the round at RTP 1.0.
+//
+// During the round every sliced fruit contributes a share of the bet,
+// positive or negative. The director tilts each slice's paytable sampling
+// toward whatever value closes the gap to the target by the final second —
+// gently at first, firmly late. If the player slices a lot and the total
+// runs hot, negative (disguised bomb) outcomes get favoured to pull it back;
+// if the total lags, big positive outcomes get favoured. The steering is
+// noisy and gradual, so the round never looks like it's on rails.
 // ============================================================================
 
 export function rand(min = 0, max = 1) {
@@ -31,6 +34,10 @@ export function pickWeighted(items, weightOf) {
   return items[items.length - 1];
 }
 
+function round2(v) {
+  return Math.round(v * 100) / 100;
+}
+
 function expectedValue(entries, valueOf, weightOf) {
   let ev = 0, tw = 0;
   for (const e of entries) { ev += valueOf(e) * weightOf(e); tw += weightOf(e); }
@@ -48,8 +55,10 @@ function normalize(entries, valueOf, setValue, weightOf, targetEV) {
 
 export function prepareConfig(cfg) {
   normalize(cfg.roundOutcomes, e => e.t, (e, v) => { e.t = v; }, e => e.w, cfg.rtp);
+  // Fruit paytables keep EV 1 relative to their share of the bet, so no fruit
+  // choice is smarter than another.
   for (const fruit of cfg.fruits) {
-    normalize(fruit.paytable, e => e.mult, (e, v) => { e.mult = v; }, e => e.w, cfg.rtp);
+    normalize(fruit.paytable, e => e.mult, (e, v) => { e.mult = v; }, e => e.w, 1);
   }
   return cfg;
 }
@@ -61,17 +70,21 @@ export class RoundDirector {
   }
 
   reset() {
-    this.target = 1;        // round multiplier rolled at start
-    this.totalStaked = 0;   // currency staked so far this round
-    this.runningTotal = 0;  // currency result so far this round
+    this.bet = 0;
+    this.targetMult = 1;    // round multiplier rolled at start
+    this.targetTotal = 0;   // bet × targetMult — where the round should land
+    this.runningTotal = 0;  // currency accumulated so far this round
+    this.slices = 0;
     this.sliceRate = 1.2;   // EMA of observed slices/sec
     this.lastSliceAt = null;
     this.elapsed = 0;
   }
 
-  startRound() {
+  startRound(bet) {
     this.reset();
-    this.target = pickWeighted(this.cfg.roundOutcomes, e => e.w).t;
+    this.bet = bet;
+    this.targetMult = pickWeighted(this.cfg.roundOutcomes, e => e.w).t;
+    this.targetTotal = bet * this.targetMult;
   }
 
   tick(elapsedSeconds) {
@@ -82,9 +95,14 @@ export class RoundDirector {
     return Math.max(0, this.cfg.roundSeconds - this.elapsed);
   }
 
-  // Called when the player slices `fruitDef` betting `bet` currency.
+  // The baseline currency chunk one average slice is worth.
+  get share() {
+    return this.bet / this.cfg.director.expectedSlices;
+  }
+
+  // Called when the player slices `fruitDef`.
   // Returns { mult, value } — value is the signed currency result.
-  onSlice(fruitDef, bet) {
+  onSlice(fruitDef) {
     const d = this.cfg.director;
 
     // Track how fast this player actually slices, to estimate slices left.
@@ -94,15 +112,17 @@ export class RoundDirector {
       this.sliceRate += d.rateEmaAlpha * (1 / gap - this.sliceRate);
     }
     this.lastSliceAt = now;
+    this.slices++;
 
-    this.totalStaked += bet;
+    // This fruit's baseline value, before the multiplier roll.
+    const unit = this.share * fruitDef.valueFactor;
 
     // Where should the total be heading, and how much per slice to get there?
-    const gap = this.target * this.totalStaked - this.runningTotal;
+    const gap = this.targetTotal - this.runningTotal;
     const rate = Math.max(d.minSliceRate, this.sliceRate);
     const slicesLeft = Math.max(1, rate * this.remaining);
     const jitter = 1 + rand(-d.jitter, d.jitter);
-    const desiredMult = (gap / slicesLeft / bet) * jitter;
+    const desiredMult = (gap / slicesLeft / unit) * jitter;
 
     // Steering strength ramps over the round.
     const p = Math.min(1, this.elapsed / this.cfg.roundSeconds);
@@ -113,8 +133,8 @@ export class RoundDirector {
       e => e.w * Math.exp(-bias * Math.abs(e.mult - desiredMult)),
     );
 
-    const value = outcome.mult * bet;
-    this.runningTotal += value;
+    const value = round2(outcome.mult * unit);
+    this.runningTotal = round2(this.runningTotal + value);
     return { mult: outcome.mult, value };
   }
 }

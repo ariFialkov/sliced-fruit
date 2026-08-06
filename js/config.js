@@ -10,9 +10,10 @@ export const CONFIG = {
   currency: '$',
   startingBalance: 1000,
 
-  // A slice places a bet of: baseStake × selected multiplier × fruit.stakeFactor
-  baseStake: 1.0,
-  stakeMultipliers: [1, 2, 5, 10],
+  // The player places ONE bet when the round starts (debited up front); the
+  // round total then trends toward bet × rtp by the end of the timer.
+  betOptions: [1, 5, 10, 20, 50],
+  defaultBet: 10,
 
   roundSeconds: 30,
 
@@ -25,10 +26,9 @@ export const CONFIG = {
   floorPayout: true,
 
   // Pre-round roll: the round's expected outcome expressed as a multiplier of
-  // everything the player will stake this round. Sampled once before the
-  // round starts; the director then steers slice results toward it.
-  // Weights are free-form — rng.js rescales the `t` values so the expected
-  // value equals `rtp` exactly.
+  // the bet. Sampled once before the round starts; the director then steers
+  // the round total toward bet × t. Weights are free-form — rng.js rescales
+  // the `t` values so the expected value equals `rtp` exactly.
   roundOutcomes: [
     { t: 0.0, w: 8 },
     { t: 0.3, w: 22 },
@@ -43,6 +43,8 @@ export const CONFIG = {
 
   // How hard the director pulls slice outcomes toward the round target.
   director: {
+    expectedSlices: 18,// slices a typical round is budgeted for — one average
+                       // slice is worth bet/expectedSlices before multipliers
     minBias: 0.12,     // steering strength at the start of the round
     maxBias: 1.9,      // steering strength in the final seconds
     ramp: 1.6,         // >1 = stays subtle early, tightens late
@@ -53,16 +55,16 @@ export const CONFIG = {
 
   // Fruit catalogue. Per fruit:
   //   weight      — relative spawn frequency
-  //   stakeFactor — bet size relative to the selected stake (bigger fruit,
-  //                 bigger bet)
-  //   paytable    — possible bet results as multiples of that fruit's bet.
+  //   valueFactor — how big this fruit's value swings are relative to the
+  //                 baseline slice share (bigger fruit, bigger swings)
+  //   paytable    — possible outcomes as multiples of this fruit's share.
   //                 Negative entries are the disguised bombs. Free-form:
-  //                 rng.js rescales mults so every fruit's EV equals `rtp`,
+  //                 rng.js rescales mults so every fruit's EV matches,
   //                 keeping the game non-skill-based across fruit choice.
   fruits: [
     {
       id: 'watermelon', name: 'Watermelon',
-      weight: 16, stakeFactor: 2.0, radius: 1.15,
+      weight: 16, valueFactor: 2.0, radius: 1.15,
       skin: 0x2f9e44, flesh: 0xff5d5d, rind: 0xd8f5c9, accent: 0x1e6f30,
       paytable: [
         { mult: -2.0, w: 14 }, { mult: 0.0, w: 16 }, { mult: 0.8, w: 30 },
@@ -71,7 +73,7 @@ export const CONFIG = {
     },
     {
       id: 'orange', name: 'Orange',
-      weight: 18, stakeFactor: 1.0, radius: 0.72,
+      weight: 18, valueFactor: 1.0, radius: 0.72,
       skin: 0xff922b, flesh: 0xffc078, rind: 0xfff4e6, accent: 0xe8590c,
       paytable: [
         { mult: -1.5, w: 12 }, { mult: 0.5, w: 30 }, { mult: 1.0, w: 30 },
@@ -80,7 +82,7 @@ export const CONFIG = {
     },
     {
       id: 'apple', name: 'Apple',
-      weight: 18, stakeFactor: 1.0, radius: 0.68,
+      weight: 18, valueFactor: 1.0, radius: 0.68,
       skin: 0xe03131, flesh: 0xf8f0d0, rind: 0xfff0f0, accent: 0x862e2e,
       paytable: [
         { mult: -1.0, w: 15 }, { mult: 0.5, w: 25 }, { mult: 1.0, w: 30 },
@@ -89,7 +91,7 @@ export const CONFIG = {
     },
     {
       id: 'banana', name: 'Banana',
-      weight: 20, stakeFactor: 0.5, radius: 0.8,
+      weight: 20, valueFactor: 0.5, radius: 0.8,
       skin: 0xffd43b, flesh: 0xfff3bf, rind: 0xf5e089, accent: 0xb08d1a,
       paytable: [
         { mult: -1.0, w: 10 }, { mult: 0.6, w: 34 }, { mult: 1.0, w: 32 },
@@ -98,7 +100,7 @@ export const CONFIG = {
     },
     {
       id: 'pineapple', name: 'Pineapple',
-      weight: 16, stakeFactor: 1.5, radius: 1.0,
+      weight: 16, valueFactor: 1.5, radius: 1.0,
       skin: 0xe8b12e, flesh: 0xffe066, rind: 0xf7d97c, accent: 0x2f9e44,
       paytable: [
         { mult: -2.0, w: 13 }, { mult: 0.0, w: 15 }, { mult: 0.8, w: 28 },
@@ -107,7 +109,7 @@ export const CONFIG = {
     },
     {
       id: 'lemon', name: 'Lemon',
-      weight: 16, stakeFactor: 0.75, radius: 0.6,
+      weight: 16, valueFactor: 0.75, radius: 0.6,
       skin: 0xffdd33, flesh: 0xfdf3a6, rind: 0xfffbe0, accent: 0xe0b000,
       paytable: [
         { mult: -1.0, w: 10 }, { mult: 0.6, w: 32 }, { mult: 1.0, w: 30 },
@@ -116,7 +118,7 @@ export const CONFIG = {
     },
     {
       id: 'passionfruit', name: 'Passionfruit',
-      weight: 12, stakeFactor: 1.0, radius: 0.62,
+      weight: 12, valueFactor: 1.0, radius: 0.62,
       skin: 0x6b2d5c, flesh: 0xffb340, rind: 0xf3e2c7, accent: 0x3d1a35,
       paytable: [
         { mult: -2.5, w: 12 }, { mult: 0.0, w: 16 }, { mult: 0.8, w: 26 },
@@ -125,7 +127,7 @@ export const CONFIG = {
     },
     {
       id: 'pomegranate', name: 'Pomegranate',
-      weight: 12, stakeFactor: 1.25, radius: 0.78,
+      weight: 12, valueFactor: 1.25, radius: 0.78,
       skin: 0xc0273d, flesh: 0xff4d6d, rind: 0xf7d6c4, accent: 0x7a1024,
       paytable: [
         { mult: -2.0, w: 13 }, { mult: 0.5, w: 24 }, { mult: 1.0, w: 26 },
@@ -134,7 +136,7 @@ export const CONFIG = {
     },
     {
       id: 'avocado', name: 'Avocado',
-      weight: 12, stakeFactor: 1.5, radius: 0.85,
+      weight: 12, valueFactor: 1.5, radius: 0.85,
       skin: 0x3f5d28, flesh: 0xbcd97e, rind: 0x2c4519, accent: 0x7a5230,
       paytable: [
         { mult: -1.5, w: 14 }, { mult: 0.4, w: 22 }, { mult: 1.0, w: 30 },

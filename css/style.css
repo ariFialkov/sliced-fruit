@@ -108,20 +108,35 @@ html, body {
   pointer-events: none;
 }
 
-#stake-label {
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  opacity: 0.75;
-  background: rgba(16, 12, 34, 0.55);
-  padding: 4px 12px;
-  border-radius: 10px;
+#hud-bet {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffe066;
+  background: rgba(16, 12, 34, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 18px;
+  border-radius: 999px;
 }
 
-#stake-chips { display: flex; gap: 10px; pointer-events: auto; }
+#bet-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 8px;
+}
+
+#bet-chips {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
 
 .chip {
-  min-width: 58px;
-  padding: 10px 0;
+  min-width: 54px;
+  padding: 10px 4px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(20, 16, 40, 0.75);

@@ -29,7 +29,7 @@ export class Game {
     const saved = parseFloat(localStorage.getItem(BALANCE_KEY));
     this.balance = Number.isFinite(saved) ? saved : this.cfg.startingBalance;
 
-    this.stakeIndex = 0;
+    this.selectedBet = this.cfg.defaultBet;
     this.mode = 'ambient'; // ambient | countdown | playing
     this.elapsed = 0;
     this.spawnTimer = 1;
@@ -38,7 +38,6 @@ export class Game {
     this.trail = [];
     this.pointerDown = false;
     this.shake = 0;
-    this.insufficientCooldown = 0;
 
     this.director = new RoundDirector(this.cfg);
 
@@ -121,15 +120,19 @@ export class Game {
 
   // -- betting helpers --------------------------------------------------------
 
-  get stakeMultiplier() { return this.cfg.stakeMultipliers[this.stakeIndex]; }
-
-  setStakeIndex(i) {
-    this.stakeIndex = i;
+  setBet(amount) {
+    this.selectedBet = amount;
     this.pushHud();
   }
 
-  betFor(def) {
-    return this.cfg.baseStake * this.stakeMultiplier * def.stakeFactor;
+  get activeBet() {
+    return this.mode === 'playing' ? this.director.bet : this.selectedBet;
+  }
+
+  // Baseline currency value of one slice of this fruit, used by the rolling
+  // labels (the director computes the real thing identically at slice time).
+  shareFor(def) {
+    return (this.activeBet / this.cfg.director.expectedSlices) * def.valueFactor;
   }
 
   saveBalance() {
@@ -147,8 +150,7 @@ export class Game {
       balance: this.balance,
       total: this.director.runningTotal,
       timeLeft: this.mode === 'playing' ? Math.max(0, this.cfg.roundSeconds - this.elapsed) : this.cfg.roundSeconds,
-      stakeMultiplier: this.stakeMultiplier,
-      baseStake: this.cfg.baseStake,
+      bet: this.activeBet,
       mode: this.mode,
     });
   }
@@ -160,12 +162,18 @@ export class Game {
     this.pushHud();
   }
 
+  // The bet is debited once, up front, when the round begins.
   startRound() {
+    const bet = this.selectedBet;
+    if (this.balance < bet) return false;
+    this.balance -= bet;
+    this.saveBalance();
     this.mode = 'playing';
     this.elapsed = 0;
     this.spawnTimer = 0.4;
-    this.director.startRound();
+    this.director.startRound(bet);
     this.pushHud();
+    return true;
   }
 
   endRound() {
@@ -176,9 +184,10 @@ export class Game {
     this.mode = 'ambient';
     this.pushHud();
     this.cb.onRoundEnd?.({
+      bet: this.director.bet,
       total,
       payout,
-      staked: this.director.totalStaked,
+      net: payout - this.director.bet,
       balance: this.balance,
     });
   }
@@ -204,7 +213,7 @@ export class Game {
       angVel: new THREE.Vector3(rand(-ph.spin, ph.spin), rand(-ph.spin, ph.spin), rand(-ph.spin, ph.spin)),
       label: new PrizeLabel(
         this.scene,
-        () => def.paytable.map(e => e.mult * this.betFor(def)),
+        () => def.paytable.map(e => e.mult * this.shareFor(def)),
         v => this.cb.formatMoney(v),
       ),
       sliced: false,
@@ -314,18 +323,8 @@ export class Game {
   }
 
   sliceFruit(f, dx, dy) {
-    const bet = this.betFor(f.def);
-    if (this.balance < bet) {
-      if (this.insufficientCooldown <= 0) {
-        this.cb.onInsufficient?.();
-        this.insufficientCooldown = 1.2;
-      }
-      return;
-    }
     f.sliced = true;
-    this.balance -= bet;
-    const result = this.director.onSlice(f.def, bet);
-    this.saveBalance();
+    const result = this.director.onSlice(f.def);
 
     // Orient the cut from the swipe: halves separate perpendicular to the
     // swipe direction, tilted a little toward the camera so the flesh shows.
@@ -385,7 +384,6 @@ export class Game {
 
   frame() {
     const dt = Math.min(this.clock.getDelta(), 0.05);
-    this.insufficientCooldown -= dt;
 
     if (this.mode === 'playing') {
       this.elapsed += dt;
