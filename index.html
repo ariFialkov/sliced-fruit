@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#171233" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Sliced Fruit</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div id="game">
+    <canvas id="scene"></canvas>
+    <canvas id="trail"></canvas>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="hud-top">
+      <div class="hud-chip">
+        <span class="hud-label">Balance</span>
+        <span id="hud-balance" class="hud-value">$0.00</span>
+      </div>
+      <div id="hud-timer-wrap">
+        <div id="hud-timer">60</div>
+        <div id="timer-bar"><div id="timer-fill"></div></div>
+      </div>
+      <div class="hud-chip">
+        <span class="hud-label">Round total</span>
+        <span id="hud-total" class="hud-value">$0.00</span>
+      </div>
+    </div>
+    <div id="hud-bottom">
+      <div id="stake-label">Stake $1.00</div>
+      <div id="stake-chips"></div>
+    </div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="toast" class="hidden"></div>
+
+  <div id="menu" class="overlay">
+    <div class="panel">
+      <h1>Sliced <em>Fruit</em></h1>
+      <p class="tagline">Swipe to slice. Every slice is a bet.</p>
+      <div class="menu-balance">Balance&nbsp;<span id="menu-balance">$0.00</span></div>
+      <button id="btn-play" class="btn-primary">Play &middot; 60s round</button>
+      <button id="btn-funds" class="btn-ghost hidden">+ Add demo funds</button>
+      <p class="howto">
+        Each fruit you slice places a bet and spins up a prize — watch the
+        rolling value above it land like a slot reel. Some fruit are bombs in
+        disguise and blow a hole in your total. When the timer hits zero, you
+        cash out whatever your total shows.
+      </p>
+    </div>
+  </div>
+
+  <div id="countdown" class="overlay hidden">
+    <div id="count-num">3</div>
+  </div>
+
+  <div id="results" class="overlay hidden">
+    <div class="panel">
+      <h2>Time&rsquo;s up!</h2>
+      <div class="stat"><span>Total staked</span><span id="res-staked"></span></div>
+      <div class="stat"><span>Round result</span><span id="res-total"></span></div>
+      <div class="stat big"><span>Payout</span><span id="res-payout"></span></div>
+      <div class="stat"><span>Balance</span><span id="res-balance"></span></div>
+      <button id="btn-again" class="btn-primary">Play again</button>
+      <button id="btn-menu" class="btn-ghost">Menu</button>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

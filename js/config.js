@@ -1,0 +1,138 @@
+// ============================================================================
+// Sliced Fruit — central tuning file.
+// Everything a designer may want to tweak lives here: RTP, paytables, spawn
+// pacing, director aggressiveness, physics. Values are plain numbers; the
+// engine (rng.js) renormalises paytables and round outcomes so the configured
+// RTP always holds exactly, no matter how the weights below are edited.
+// ============================================================================
+
+export const CONFIG = {
+  currency: '$',
+  startingBalance: 1000,
+
+  // A slice places a bet of: baseStake × selected multiplier × fruit.stakeFactor
+  baseStake: 1.0,
+  stakeMultipliers: [1, 2, 5, 10],
+
+  roundSeconds: 60,
+
+  // Target return-to-player across a full round (1.0 = break even on average).
+  // The pre-round "roll" and the fruit director both derive from this number.
+  rtp: 1.0,
+
+  // If true the player can never cash out below zero — a negative round total
+  // simply pays nothing (losses are capped at the amount staked).
+  floorPayout: true,
+
+  // Pre-round roll: the round's expected outcome expressed as a multiplier of
+  // everything the player will stake this round. Sampled once before the
+  // round starts; the director then steers slice results toward it.
+  // Weights are free-form — rng.js rescales the `t` values so the expected
+  // value equals `rtp` exactly.
+  roundOutcomes: [
+    { t: 0.0, w: 8 },
+    { t: 0.3, w: 22 },
+    { t: 0.6, w: 20 },
+    { t: 0.9, w: 18 },
+    { t: 1.2, w: 14 },
+    { t: 1.8, w: 10 },
+    { t: 2.5, w: 5 },
+    { t: 4.0, w: 2.4 },
+    { t: 8.0, w: 0.6 },
+  ],
+
+  // How hard the director pulls slice outcomes toward the round target.
+  director: {
+    minBias: 0.12,     // steering strength at the start of the round
+    maxBias: 1.9,      // steering strength in the final seconds
+    ramp: 1.6,         // >1 = stays subtle early, tightens late
+    minSliceRate: 0.4, // assumed slices/sec floor when estimating what's left
+    rateEmaAlpha: 0.25,// smoothing for the player's observed slice rate
+    jitter: 0.35,      // random wobble on the desired per-slice value
+  },
+
+  // Fruit catalogue. Per fruit:
+  //   weight      — relative spawn frequency
+  //   stakeFactor — bet size relative to the selected stake (bigger fruit,
+  //                 bigger bet)
+  //   paytable    — possible bet results as multiples of that fruit's bet.
+  //                 Negative entries are the disguised bombs. Free-form:
+  //                 rng.js rescales mults so every fruit's EV equals `rtp`,
+  //                 keeping the game non-skill-based across fruit choice.
+  fruits: [
+    {
+      id: 'watermelon', name: 'Watermelon',
+      weight: 16, stakeFactor: 2.0, radius: 1.15,
+      skin: 0x2f9e44, flesh: 0xff5d5d, rind: 0xd8f5c9, accent: 0x1e6f30,
+      paytable: [
+        { mult: -2.0, w: 14 }, { mult: 0.0, w: 16 }, { mult: 0.8, w: 30 },
+        { mult: 2.0, w: 22 }, { mult: 5.0, w: 14 }, { mult: 10.0, w: 4 },
+      ],
+    },
+    {
+      id: 'orange', name: 'Orange',
+      weight: 24, stakeFactor: 1.0, radius: 0.72,
+      skin: 0xff922b, flesh: 0xffc078, rind: 0xfff4e6, accent: 0xe8590c,
+      paytable: [
+        { mult: -1.5, w: 12 }, { mult: 0.5, w: 30 }, { mult: 1.0, w: 30 },
+        { mult: 1.8, w: 18 }, { mult: 3.5, w: 10 },
+      ],
+    },
+    {
+      id: 'apple', name: 'Apple',
+      weight: 24, stakeFactor: 1.0, radius: 0.68,
+      skin: 0xe03131, flesh: 0xf8f0d0, rind: 0xfff0f0, accent: 0x862e2e,
+      paytable: [
+        { mult: -1.0, w: 15 }, { mult: 0.5, w: 25 }, { mult: 1.0, w: 30 },
+        { mult: 2.0, w: 20 }, { mult: 3.2, w: 10 },
+      ],
+    },
+    {
+      id: 'banana', name: 'Banana',
+      weight: 20, stakeFactor: 0.5, radius: 0.8,
+      skin: 0xffd43b, flesh: 0xfff3bf, rind: 0xf5e089, accent: 0xb08d1a,
+      paytable: [
+        { mult: -1.0, w: 10 }, { mult: 0.6, w: 34 }, { mult: 1.0, w: 32 },
+        { mult: 1.6, w: 16 }, { mult: 2.5, w: 8 },
+      ],
+    },
+    {
+      id: 'pineapple', name: 'Pineapple',
+      weight: 16, stakeFactor: 1.5, radius: 1.0,
+      skin: 0xe8b12e, flesh: 0xffe066, rind: 0xf7d97c, accent: 0x2f9e44,
+      paytable: [
+        { mult: -2.0, w: 13 }, { mult: 0.0, w: 15 }, { mult: 0.8, w: 28 },
+        { mult: 1.8, w: 24 }, { mult: 4.0, w: 15 }, { mult: 8.0, w: 5 },
+      ],
+    },
+  ],
+
+  spawn: {
+    // In-round pacing: interval eases from `startInterval` to `endInterval`
+    // over the round, batch size ramps too.
+    startInterval: 1.5,
+    endInterval: 0.8,
+    minBatch: 1,
+    maxBatch: 3,
+    maxConcurrent: 7,
+    // Menu (ambient) pacing — the attract loop behind the menu.
+    ambientInterval: 1.9,
+    ambientBatch: 2,
+    ambientMaxConcurrent: 5,
+  },
+
+  physics: {
+    gravity: 13.5,
+    launchYMin: 12.0,   // vertical launch speed range
+    launchYMax: 16.5,
+    driftX: 2.6,        // max horizontal drift speed
+    spin: 2.2,          // max angular speed (rad/s)
+    killY: -4,          // despawn when below this and falling
+  },
+
+  swipe: {
+    minSpeed: 0.22,     // px per ms below which a drag doesn't slice
+    pad: 14,            // extra slice hit padding in px
+    trailMs: 130,       // how long the blade trail persists
+  },
+};
