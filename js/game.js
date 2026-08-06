@@ -67,11 +67,11 @@ export class Game {
     this.camera.position.set(0, this.camY, this.camDist);
     this.camera.lookAt(0, this.camY, 0);
 
-    this.scene.add(new THREE.HemisphereLight(0xdce8ff, 0x4a3573, 1.5));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xa8c8dd, 1.35));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.3);
     sun.position.set(5, 10, 7);
     this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xffd9a0, 0.7);
+    const fill = new THREE.DirectionalLight(0xfff3d6, 0.55);
     fill.position.set(-6, 2, 8);
     this.scene.add(fill);
   }
@@ -81,9 +81,9 @@ export class Game {
     c.width = 2; c.height = 512;
     const ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, 512);
-    g.addColorStop(0, '#171233');
-    g.addColorStop(0.55, '#2a1b4f');
-    g.addColorStop(1, '#3d2a63');
+    g.addColorStop(0, '#6fbdea');
+    g.addColorStop(0.55, '#9ed9f5');
+    g.addColorStop(1, '#d6f1fc');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 2, 512);
     const tex = new THREE.CanvasTexture(c);
@@ -368,11 +368,15 @@ export class Game {
     ctx.lineJoin = 'round';
     for (let i = 1; i < pts.length; i++) {
       const age = (now - pts[i].t) / maxAge;
-      ctx.strokeStyle = `rgba(255,255,255,${(1 - age) * 0.9})`;
-      ctx.lineWidth = 3 + (1 - age) * 9;
       ctx.beginPath();
       ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
       ctx.lineTo(pts[i].x, pts[i].y);
+      // dark underlay keeps the blade visible against the bright sky
+      ctx.strokeStyle = `rgba(18,60,96,${(1 - age) * 0.45})`;
+      ctx.lineWidth = 6 + (1 - age) * 12;
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${(1 - age) * 0.95})`;
+      ctx.lineWidth = 3 + (1 - age) * 9;
       ctx.stroke();
     }
   }

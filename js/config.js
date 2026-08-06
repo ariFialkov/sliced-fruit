@@ -14,7 +14,7 @@ export const CONFIG = {
   baseStake: 1.0,
   stakeMultipliers: [1, 2, 5, 10],
 
-  roundSeconds: 60,
+  roundSeconds: 30,
 
   // Target return-to-player across a full round (1.0 = break even on average).
   // The pre-round "roll" and the fruit director both derive from this number.
@@ -71,7 +71,7 @@ export const CONFIG = {
     },
     {
       id: 'orange', name: 'Orange',
-      weight: 24, stakeFactor: 1.0, radius: 0.72,
+      weight: 18, stakeFactor: 1.0, radius: 0.72,
       skin: 0xff922b, flesh: 0xffc078, rind: 0xfff4e6, accent: 0xe8590c,
       paytable: [
         { mult: -1.5, w: 12 }, { mult: 0.5, w: 30 }, { mult: 1.0, w: 30 },
@@ -80,7 +80,7 @@ export const CONFIG = {
     },
     {
       id: 'apple', name: 'Apple',
-      weight: 24, stakeFactor: 1.0, radius: 0.68,
+      weight: 18, stakeFactor: 1.0, radius: 0.68,
       skin: 0xe03131, flesh: 0xf8f0d0, rind: 0xfff0f0, accent: 0x862e2e,
       paytable: [
         { mult: -1.0, w: 15 }, { mult: 0.5, w: 25 }, { mult: 1.0, w: 30 },
@@ -103,6 +103,42 @@ export const CONFIG = {
       paytable: [
         { mult: -2.0, w: 13 }, { mult: 0.0, w: 15 }, { mult: 0.8, w: 28 },
         { mult: 1.8, w: 24 }, { mult: 4.0, w: 15 }, { mult: 8.0, w: 5 },
+      ],
+    },
+    {
+      id: 'lemon', name: 'Lemon',
+      weight: 16, stakeFactor: 0.75, radius: 0.6,
+      skin: 0xffdd33, flesh: 0xfdf3a6, rind: 0xfffbe0, accent: 0xe0b000,
+      paytable: [
+        { mult: -1.0, w: 10 }, { mult: 0.6, w: 32 }, { mult: 1.0, w: 30 },
+        { mult: 1.5, w: 18 }, { mult: 2.2, w: 10 },
+      ],
+    },
+    {
+      id: 'passionfruit', name: 'Passionfruit',
+      weight: 12, stakeFactor: 1.0, radius: 0.62,
+      skin: 0x6b2d5c, flesh: 0xffb340, rind: 0xf3e2c7, accent: 0x3d1a35,
+      paytable: [
+        { mult: -2.5, w: 12 }, { mult: 0.0, w: 16 }, { mult: 0.8, w: 26 },
+        { mult: 2.0, w: 22 }, { mult: 6.0, w: 18 }, { mult: 12.0, w: 6 },
+      ],
+    },
+    {
+      id: 'pomegranate', name: 'Pomegranate',
+      weight: 12, stakeFactor: 1.25, radius: 0.78,
+      skin: 0xc0273d, flesh: 0xff4d6d, rind: 0xf7d6c4, accent: 0x7a1024,
+      paytable: [
+        { mult: -2.0, w: 13 }, { mult: 0.5, w: 24 }, { mult: 1.0, w: 26 },
+        { mult: 2.5, w: 20 }, { mult: 5.0, w: 12 }, { mult: 9.0, w: 5 },
+      ],
+    },
+    {
+      id: 'avocado', name: 'Avocado',
+      weight: 12, stakeFactor: 1.5, radius: 0.85,
+      skin: 0x3f5d28, flesh: 0xbcd97e, rind: 0x2c4519, accent: 0x7a5230,
+      paytable: [
+        { mult: -1.5, w: 14 }, { mult: 0.4, w: 22 }, { mult: 1.0, w: 30 },
+        { mult: 2.0, w: 22 }, { mult: 4.0, w: 12 },
       ],
     },
   ],

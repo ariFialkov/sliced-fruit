@@ -1,6 +1,6 @@
 # Sliced Fruit 🍉
 
-A low-poly 3D fruit-slicing betting game (PWA) — Fruit Ninja mechanics with
+A smooth, cartoony 3D fruit-slicing betting game (PWA) — Fruit Ninja mechanics with
 real-stakes framing. Swipe to slice; **every slice places a bet**, the rolling
 prize above each fruit lands on the result like a slot reel, and disguised
 bombs blow a hole in your round total.
@@ -25,7 +25,7 @@ device you'll need HTTPS (any static host works: GitHub Pages, Netlify, etc.).
 
 1. **Menu** — attract screen with fruit popping up behind it, rolling prize
    indicators included. Pick a stake multiplier (×1/×2/×5/×10) in-game.
-2. **60-second round** — swipe to slice. Each slice bets
+2. **30-second round** — swipe to slice. Each slice bets
    `baseStake × multiplier × fruit.stakeFactor` and adds the rolled result
    (positive or negative) to your round total.
 3. **Cash out** — when the timer ends you're paid `max(0, roundTotal)`
@@ -37,7 +37,7 @@ device you'll need HTTPS (any static host works: GitHub Pages, Netlify, etc.).
   target return (as a multiple of everything staked that round).
 - During the round the **director** (`js/rng.js`) tilts each slice's paytable
   sampling toward whatever per-slice value closes the gap to that target by
-  the end of the 60s — gently at first, firmly in the final seconds — so the
+  the end of the round — gently at first, firmly in the final seconds — so the
   game *feels* skill-based but trends to the configured RTP.
 - Whether a fruit is positive or a disguised bomb is decided **at slice time**,
   so it is indistinguishable beforehand by design.

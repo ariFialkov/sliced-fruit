@@ -5,12 +5,12 @@
 // ============================================================================
 
 import * as THREE from '../lib/three.module.min.js';
-import { flatMat, buildBombCore } from './fruits.js';
+import { fruitMat, buildBombCore } from './fruits.js';
 import { rand } from './rng.js';
 
-const shardGeo = new THREE.IcosahedronGeometry(0.11, 0);
-const puffGeo = new THREE.IcosahedronGeometry(0.3, 0);
-const splatGeo = new THREE.CircleGeometry(1, 10);
+const shardGeo = new THREE.SphereGeometry(0.1, 8, 6);
+const puffGeo = new THREE.SphereGeometry(0.3, 10, 8);
+const splatGeo = new THREE.CircleGeometry(1, 20);
 
 function splatMat(color) {
   return new THREE.MeshBasicMaterial({
@@ -57,7 +57,7 @@ export class EffectSystem {
     const group = new THREE.Group();
     group.position.copy(pos);
     const parts = [];
-    const mat = flatMat(color);
+    const mat = fruitMat(color);
     for (let i = 0; i < count; i++) {
       const p = new THREE.Mesh(shardGeo, mat);
       const s = rand(0.5, 1.4);
