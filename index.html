@@ -50,72 +50,70 @@
         <svg class="logo" viewBox="0 0 420 214" role="img" aria-hidden="true">
           <defs>
             <filter id="lshadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="5" stdDeviation="0" flood-color="#241b3e" flood-opacity="0.4"/>
+              <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#0d0d24" flood-opacity="0.5"/>
             </filter>
+            <linearGradient id="grad-sliced" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#2fb457"/>
+              <stop offset="1" stop-color="#7cd94e"/>
+            </linearGradient>
+            <linearGradient id="grad-fruit" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#ff4d6d"/>
+              <stop offset="0.55" stop-color="#ff7043"/>
+              <stop offset="1" stop-color="#ffa626"/>
+            </linearGradient>
+            <path id="fruit-arch" d="M 40 178 Q 210 146 380 178" fill="none"/>
           </defs>
 
           <!-- watermelon wedge, top-left -->
-          <g transform="translate(34 34) rotate(-16)">
-            <path d="M -32 0 A 32 32 0 0 0 32 0 Z" fill="#2f9e44"/>
-            <path d="M -27 0 A 27 27 0 0 0 27 0 Z" fill="#d8f5c9"/>
-            <path d="M -23 0 A 23 23 0 0 0 23 0 Z" fill="#ff5d5d"/>
-            <circle cx="-9" cy="9" r="2.6" fill="#232323"/>
-            <circle cx="3" cy="13" r="2.6" fill="#232323"/>
-            <circle cx="11" cy="6" r="2.6" fill="#232323"/>
+          <g transform="translate(38 38) rotate(-14)">
+            <path d="M -28 0 A 28 28 0 0 0 28 0 Z" fill="#2f9e44"/>
+            <path d="M -23.5 0 A 23.5 23.5 0 0 0 23.5 0 Z" fill="#d8f5c9"/>
+            <path d="M -20 0 A 20 20 0 0 0 20 0 Z" fill="#ff5d5d"/>
+            <circle cx="-8" cy="8" r="2.2" fill="#232323"/>
+            <circle cx="2" cy="11" r="2.2" fill="#232323"/>
+            <circle cx="10" cy="5" r="2.2" fill="#232323"/>
           </g>
 
           <!-- orange, top-right -->
-          <g transform="translate(384 34)">
-            <circle r="21" fill="#ff922b"/>
-            <ellipse cx="-7" cy="-8" rx="7" ry="4.5" fill="#ffffff" opacity="0.3"/>
-            <ellipse cx="10" cy="-19" rx="8" ry="4" fill="#37b24d" transform="rotate(32 10 -19)"/>
+          <g transform="translate(384 40)">
+            <circle r="17" fill="#ff922b"/>
+            <ellipse cx="-5.5" cy="-6.5" rx="5.5" ry="3.5" fill="#ffffff" opacity="0.3"/>
+            <ellipse cx="8" cy="-15.5" rx="6.5" ry="3.2" fill="#37b24d" transform="rotate(32 8 -15.5)"/>
           </g>
 
           <!-- lemon, bottom-right -->
-          <g transform="translate(387 182) rotate(-24)">
-            <ellipse rx="20" ry="13" fill="#ffdd33"/>
-            <circle cx="-21" r="4" fill="#ffdd33"/>
-            <circle cx="21" r="4" fill="#ffdd33"/>
-            <ellipse cx="-6" cy="-4" rx="6" ry="3" fill="#ffffff" opacity="0.35"/>
+          <g transform="translate(384 190) rotate(-22)">
+            <ellipse rx="16" ry="10.5" fill="#ffdd33"/>
+            <circle cx="-17" r="3.2" fill="#ffdd33"/>
+            <circle cx="17" r="3.2" fill="#ffdd33"/>
+            <ellipse cx="-5" cy="-3" rx="4.5" ry="2.4" fill="#ffffff" opacity="0.35"/>
           </g>
 
           <!-- gold sparkles -->
           <g fill="#ffd700">
-            <path d="M 350 106 l 2.2 -6 2.2 6 6 2.2 -6 2.2 -2.2 6 -2.2 -6 -6 -2.2 Z"/>
-            <path d="M 58 96 l 1.8 -5 1.8 5 5 1.8 -5 1.8 -1.8 5 -1.8 -5 -5 -1.8 Z"/>
-            <path d="M 322 16 l 1.6 -4.4 1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 Z"/>
+            <path d="M 46 108 l 1.8 -5 1.8 5 5 1.8 -5 1.8 -1.8 5 -1.8 -5 -5 -1.8 Z"/>
+            <path d="M 368 96 l 1.6 -4.4 1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 Z"/>
           </g>
 
-          <!-- blade streak with a juice drop -->
-          <path d="M 30 122 L 390 92" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
-          <circle cx="205" cy="106" r="4.5" fill="#ff5d5d" opacity="0.9"/>
+          <!-- banana swoosh underline -->
+          <path d="M 116 196 Q 210 216 304 196" stroke="#ffd43b" stroke-width="10" stroke-linecap="round" fill="none"/>
+          <path d="M 120 195 Q 210 212 300 194" stroke="#fff3bf" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.6"/>
 
-          <!-- banana swoosh under FRUIT -->
-          <path d="M 104 186 Q 209 212 314 184" stroke="#ffd43b" stroke-width="13" stroke-linecap="round" fill="none"/>
-          <path d="M 108 185 Q 209 207 310 183" stroke="#fff3bf" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6"/>
+          <!-- SLICED: one plane, airy tracking, white fill, green outline -->
+          <text x="210" y="66" filter="url(#lshadow)"
+                font-family="ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif"
+                font-weight="900" font-size="42" text-anchor="middle" letter-spacing="9"
+                fill="#ffffff" stroke="url(#grad-sliced)" stroke-width="8"
+                stroke-linejoin="round" paint-order="stroke">SLICED</text>
 
-          <!-- SLICED -->
-          <g filter="url(#lshadow)" font-family="ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif"
-             font-weight="900" font-size="46" text-anchor="middle"
-             stroke="#241b3e" stroke-width="9" stroke-linejoin="round" paint-order="stroke">
-            <text x="88" y="64" fill="#ff5d5d" transform="rotate(-8 88 64)">S</text>
-            <text x="131" y="68" fill="#ff922b" transform="rotate(6 131 68)">L</text>
-            <text x="166" y="61" fill="#ffdd33" transform="rotate(-5 166 61)">I</text>
-            <text x="203" y="67" fill="#69db4c" transform="rotate(7 203 67)">C</text>
-            <text x="246" y="62" fill="#c56fd6" transform="rotate(-6 246 62)">E</text>
-            <text x="291" y="68" fill="#ff4d6d" transform="rotate(5 291 68)">D</text>
-          </g>
-
-          <!-- FRUIT -->
-          <g filter="url(#lshadow)" font-family="ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif"
-             font-weight="900" font-size="76" text-anchor="middle"
-             stroke="#241b3e" stroke-width="11" stroke-linejoin="round" paint-order="stroke">
-            <text x="96" y="172" fill="#ff922b" transform="rotate(-6 96 172)">F</text>
-            <text x="155" y="177" fill="#ff5d5d" transform="rotate(5 155 177)">R</text>
-            <text x="215" y="171" fill="#ffdd33" transform="rotate(-4 215 171)">U</text>
-            <text x="266" y="176" fill="#69db4c" transform="rotate(6 266 176)">I</text>
-            <text x="316" y="173" fill="#c56fd6" transform="rotate(-5 316 173)">T</text>
-          </g>
+          <!-- FRUIT: gentle arch, white fill, juicy warm outline -->
+          <text filter="url(#lshadow)"
+                font-family="ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif"
+                font-weight="900" font-size="80" letter-spacing="3"
+                fill="#ffffff" stroke="url(#grad-fruit)" stroke-width="11"
+                stroke-linejoin="round" paint-order="stroke">
+            <textPath href="#fruit-arch" startOffset="50%" text-anchor="middle">FRUIT</textPath>
+          </text>
         </svg>
       </h1>
       <p class="tagline">Place your bet. Slice to collect.</p>
