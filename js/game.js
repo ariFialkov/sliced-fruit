@@ -13,6 +13,7 @@ import { CONFIG } from './config.js';
 import { prepareConfig, RoundDirector, rand, pickWeighted } from './rng.js';
 import { buildWhole, buildHalves, applyGoldSkin, applyGlow } from './fruits.js';
 import { EffectSystem, GoldAura } from './effects.js';
+import { Blender } from './blender.js';
 import { PrizeLabel } from './labels.js';
 import { sfxSlice, sfxSplat, sfxBoom, sfxWin, sfxGolden, sfxFrenzy, unlockAudio } from './sfx.js';
 
@@ -53,6 +54,7 @@ export class Game {
 
     this.initScene(sceneCanvas);
     this.effects = new EffectSystem(this.scene);
+    this.blender = this.cfg.blender.enabled ? new Blender(this.scene, this.cfg.blender) : null;
     this.bindPointer();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -121,6 +123,9 @@ export class Game {
     // frustum extents at z = 0 (the fruit plane)
     this.halfH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camDist;
     this.halfW = this.halfH * this.camera.aspect;
+    if (this.blender) {
+      this.blender.group.position.y = this.camY - this.halfH + this.cfg.blender.rimOffset;
+    }
   }
 
   worldToScreen(pos) {
@@ -191,6 +196,7 @@ export class Game {
     this.elapsed = 0;
     this.spawnTimer = 0.4;
     this.director.startRound(bet);
+    this.blender?.reset();
 
     // Maybe schedule this round's frenzy window.
     const fz = this.cfg.frenzy;
@@ -332,10 +338,20 @@ export class Game {
     const g = this.cfg.physics.gravity;
     const bottom = this.camY - this.halfH;
     const labelPos = new THREE.Vector3();
+    const rimY = this.blender ? this.blender.group.position.y : -Infinity;
     for (let i = this.fruits.length - 1; i >= 0; i--) {
       const f = this.fruits[i];
+      const prevY = f.group.position.y;
       f.vel.y -= g * dt;
       f.group.position.addScaledVector(f.vel, dt);
+
+      // Falling into the blender mouth?
+      if (this.blender && f.vel.y < 0 && prevY >= rimY && f.group.position.y < rimY &&
+          Math.abs(f.group.position.x - this.blender.x) <= this.cfg.blender.radius &&
+          this.blender.cooldown <= 0) {
+        if (this.blenderCatch(f)) continue;
+      }
+
       f.group.rotation.x += f.angVel.x * dt;
       f.group.rotation.y += f.angVel.y * dt;
       f.group.rotation.z += f.angVel.z * dt;
@@ -358,6 +374,102 @@ export class Game {
         this.deadLabels.splice(i, 1);
       }
     }
+  }
+
+  // -- blender ----------------------------------------------------------------
+
+  updateBlender(dt) {
+    const b = this.blender;
+    if (!b) return;
+    const cfg = this.cfg.blender;
+    b.cooldown = Math.max(0, b.cooldown - dt);
+
+    let huntX = null;
+    if (this.mode === 'playing') {
+      const d = this.director;
+      // How far the total has drifted from the pace it should be keeping.
+      const p = Math.min(1, this.elapsed / this.cfg.roundSeconds);
+      const offPace = d.targetTotal * p - d.runningTotal;
+      const gap = d.targetTotal - d.runningTotal;
+      const hungry =
+        Math.abs(offPace) > d.share * cfg.hungerThreshold ||
+        (d.remaining <= cfg.lateSeconds && Math.abs(gap) > d.share * cfg.lateThreshold);
+      if (hungry) huntX = this.predictCatchX(gap);
+    }
+    b.update(dt, { halfW: this.halfW, huntX });
+  }
+
+  // Where should the blender stand to swallow the soonest reachable fruit?
+  // `gap` < 0 means the total is running hot, so goldens are left alone.
+  predictCatchX(gap) {
+    const g = this.cfg.physics.gravity;
+    const rimY = this.blender.group.position.y;
+    const reach = this.cfg.blender.huntSpeed;
+    let best = null;
+    for (const f of this.fruits) {
+      if (f.sliced) continue;
+      if (f.golden && gap < 0) continue;
+      const py = f.group.position.y, vy = f.vel.y;
+      const disc = vy * vy + 2 * g * (py - rimY);
+      if (disc < 0) continue;                 // never comes back down to the rim
+      const t = (vy + Math.sqrt(disc)) / g;   // time until it crosses, descending
+      if (t <= 0.05) continue;
+      const x = f.group.position.x + f.vel.x * t;
+      if (Math.abs(x) > this.halfW) continue;
+      if (Math.abs(x - this.blender.x) > reach * t) continue; // can't get there in time
+      if (!best || t < best.t) best = { t, x };
+    }
+    return best ? best.x : null;
+  }
+
+  // Returns true if the fruit was consumed.
+  blenderCatch(f) {
+    const b = this.blender;
+    const pos = b.mouth();
+
+    // Menu attract loop: purely decorative, no betting values involved.
+    if (this.mode !== 'playing') {
+      if (Math.random() > this.cfg.blender.ambientCatchChance) return false;
+      b.cooldown = this.cfg.blender.catchCooldown;
+      b.absorb(f.def.flesh);
+      this.effects.juiceBurst(pos, f.def.flesh, 10, 4.5);
+      sfxSplat(rand(0.8, 1.2));
+      this.removeFruit(f, false);
+      return true;
+    }
+
+    b.cooldown = this.cfg.blender.catchCooldown;
+
+    if (f.golden) {
+      const m = pickWeighted(this.cfg.golden.multipliers, e => e.w).m;
+      this.director.applyGolden(m);
+      b.absorb(0xffd700);
+      this.effects.juiceBurst(pos, 0xffd700, 16, 6);
+      this.effects.juiceBurst(pos, 0xfff3bf, 8, 4);
+      sfxGolden();
+      f.label.land(0, `×${m}!`);
+    } else {
+      const result = this.director.onSlice(f.def);
+      if (result.value < 0) {
+        // A disguised bomb going off inside the blender.
+        b.absorb(0x4a4a55);
+        this.effects.bombExplosion(pos, new THREE.Vector3(0, 2.5, 0));
+        this.shake = 0.4;
+        this.cb.onBomb?.();
+        sfxBoom();
+      } else {
+        b.absorb(f.def.flesh);
+        this.effects.juiceBurst(pos, f.def.flesh, 12, 5);
+        sfxSplat(rand(0.8, 1.2));
+      }
+      f.label.land(result.value);
+    }
+
+    // float the result up out of the blender mouth
+    f.label.sprite.position.set(pos.x, pos.y + 1.0, 0);
+    this.removeFruit(f, true);
+    this.pushHud();
+    return true;
   }
 
   // -- slicing ----------------------------------------------------------------
@@ -509,6 +621,7 @@ export class Game {
     }
 
     this.updateSpawning(dt);
+    this.updateBlender(dt);
     this.updateFruits(dt);
     this.effects.update(dt, this.cfg.physics.gravity);
     this.drawTrail();

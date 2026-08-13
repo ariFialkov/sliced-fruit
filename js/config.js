@@ -170,6 +170,24 @@ export const CONFIG = {
     maxConcurrent: 12,       // …with a higher on-screen cap
   },
 
+  // The blender patrolling the bottom of the screen. It is what makes the
+  // round's rolled result reachable without player input: caught fruit run
+  // through the same director as sliced fruit, so the total still travels to
+  // its target if the player never touches the screen. It only hunts when the
+  // total drifts off the pace, so active players rarely lose fruit to it.
+  blender: {
+    enabled: true,
+    radius: 0.95,          // catch mouth half-width, in world units
+    rimOffset: 2.95,       // mouth height above the bottom of the view
+    patrolSpeed: 2.2,      // drifting speed when the round is on pace
+    huntSpeed: 8.0,        // speed when it is chasing a landing spot
+    catchCooldown: 0.85,   // min seconds between catches
+    hungerThreshold: 1.1,  // hunt once |off-pace| exceeds this × slice share
+    lateSeconds: 7,        // in the last N seconds, hunt to close any gap
+    lateThreshold: 0.4,    // …once the remaining gap exceeds this × share
+    ambientCatchChance: 0.55, // menu attract loop: catch some fruit for show
+  },
+
   spawn: {
     // In-round pacing: interval eases from `startInterval` to `endInterval`
     // over the round, batch size ramps too.

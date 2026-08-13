@@ -1,6 +1,6 @@
 // Service worker: precache the whole game so it installs and plays offline.
 // Bump VERSION whenever any asset changes.
-const VERSION = 'sliced-fruit-v8';
+const VERSION = 'sliced-fruit-v9';
 
 const ASSETS = [
   './',
@@ -14,6 +14,7 @@ const ASSETS = [
   './js/rng.js',
   './js/fruits.js',
   './js/effects.js',
+  './js/blender.js',
   './js/labels.js',
   './js/sfx.js',
   './lib/three.module.min.js',
