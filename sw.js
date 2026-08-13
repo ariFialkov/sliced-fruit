@@ -1,11 +1,11 @@
 // Service worker: precache the whole game so it installs and plays offline.
 // Bump VERSION whenever any asset changes.
-const VERSION = 'sliced-fruit-v7';
+const VERSION = 'sliced-fruit-v8';
 
 const ASSETS = [
   './',
   './index.html',
-  './manifest.webmanifest',
+  './manifest.json',
   './css/style.css',
   './js/main.js',
   './js/game.js',
