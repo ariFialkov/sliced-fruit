@@ -104,4 +104,9 @@ extension.
 ## Stack
 
 Vanilla ES modules + [Three.js](https://threejs.org) (vendored in `lib/`,
-MIT — see `lib/THREE-LICENSE`). No build step, no other dependencies.
+MIT — see `lib/THREE-LICENSE`). No bundler, no dependencies.
+
+`npm run build` emits only web-safe file extensions — hosts often reject
+unknown or extensionless uploads — and inlines the Three.js MIT notice into the
+top of its bundle, so `lib/THREE-LICENSE` stays in the repo but never needs to
+be uploaded. Anything skipped is listed in the build output.
