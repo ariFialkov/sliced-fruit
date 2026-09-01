@@ -109,6 +109,10 @@ MIT — see `lib/THREE-LICENSE`). No bundler, no dependencies, and no image
 assets: every fruit is procedural geometry (`js/fruits.js`) wearing textures
 painted to canvases at load time (`js/textures.js`).
 
+The title, countdown and frenzy banner use the
+[Bungee](https://github.com/djrrb/Bungee) display face (SIL OFL, vendored in
+`fonts/` with its licence) so the lettering is identical on every device.
+
 `npm run build` emits only web-safe file extensions — hosts often reject
 unknown or extensionless uploads — and inlines the Three.js MIT notice into the
 top of its bundle, so `lib/THREE-LICENSE` stays in the repo but never needs to

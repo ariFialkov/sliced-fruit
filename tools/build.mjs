@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'dist');
 
-const RUNTIME = ['index.html', 'sw.js', 'manifest.json', 'css', 'js', 'lib', 'icons'];
+const RUNTIME = ['index.html', 'sw.js', 'manifest.json', 'css', 'js', 'lib', 'icons', 'fonts'];
 
 // Extensions hosts reliably accept for a static site.
 const ALLOWED = new Set([

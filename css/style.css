@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Bungee';
+  src: url('../fonts/bungee.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
@@ -184,6 +192,7 @@ html, body {
 .logo {
   width: min(300px, 82%);
   height: auto;
+  font-synthesis: none;
   animation: logo-bob 4.5s ease-in-out infinite alternate;
 }
 
@@ -266,8 +275,9 @@ html, body {
 #countdown { pointer-events: none; }
 
 #count-num {
+  font-family: 'Bungee', 'Arial Black', system-ui, sans-serif;
   font-size: 110px;
-  font-weight: 900;
+  font-weight: 400;
   text-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
 }
 
@@ -316,9 +326,9 @@ html, body {
   transform: translateX(-50%);
   pointer-events: none;
   z-index: 25;
-  font-size: clamp(48px, 12vw, 92px);
-  font-weight: 900;
-  font-style: italic;
+  font-family: 'Bungee', 'Arial Black', system-ui, sans-serif;
+  font-size: clamp(44px, 11vw, 88px);
+  font-weight: 400;
   letter-spacing: 0.04em;
   background: linear-gradient(120deg, #f0abfc, #a855f7, #ec4899, #fbbf24);
   -webkit-background-clip: text;
