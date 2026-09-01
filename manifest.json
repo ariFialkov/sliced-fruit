@@ -1,0 +1,17 @@
+{
+  "name": "Sliced Fruit",
+  "short_name": "Sliced Fruit",
+  "description": "Low-poly 3D fruit-slicing betting game. Swipe to slice — every slice is a bet.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#9ed9f5",
+  "theme_color": "#6fbdea",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

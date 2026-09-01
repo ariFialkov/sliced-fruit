@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#6fbdea" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Sliced Fruit</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div id="game">
+    <canvas id="scene"></canvas>
+    <canvas id="trail"></canvas>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="hud-top">
+      <div class="hud-chip">
+        <span class="hud-label">Balance</span>
+        <span id="hud-balance" class="hud-value">$0.00</span>
+      </div>
+      <div id="hud-timer-wrap">
+        <div id="hud-timer">30</div>
+        <div id="timer-bar"><div id="timer-fill"></div></div>
+      </div>
+      <div class="hud-chip">
+        <span class="hud-label">Round total</span>
+        <span id="hud-total" class="hud-value">$0.00</span>
+      </div>
+    </div>
+    <div id="hud-bottom">
+      <div id="hud-bet">Bet $10.00</div>
+    </div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="frenzy-glow" class="hidden"></div>
+  <div id="frenzy-banner" class="hidden">FRENZY!</div>
+  <div id="toast" class="hidden"></div>
+
+  <div id="menu" class="overlay">
+    <div class="menu-stack">
+      <h1 class="logo-wrap" aria-label="Sliced Fruit">
+        <svg class="logo" viewBox="0 0 420 210" role="img" aria-hidden="true">
+          <defs>
+            <filter id="lshadow" x="-20%" y="-20%" width="140%" height="160%">
+              <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#08051c" flood-opacity="0.6"/>
+            </filter>
+            <text id="w-sliced" x="210" y="78" text-anchor="middle"
+                  font-family="'Bungee', 'Arial Black', system-ui, sans-serif"
+                  font-weight="400" font-size="56" letter-spacing="3">SLICED</text>
+            <text id="w-fruit" x="210" y="190" text-anchor="middle"
+                  font-family="'Bungee', 'Arial Black', system-ui, sans-serif"
+                  font-weight="400" font-size="100" letter-spacing="3">FRUIT</text>
+          </defs>
+
+          <!-- sparkle burst above the title -->
+          <g fill="#ffd43b" transform="translate(210 14)">
+            <rect x="-3" y="-12" width="6" height="16" rx="3"/>
+            <rect x="-3" y="-12" width="6" height="14" rx="3" transform="rotate(-34) translate(-14 4)"/>
+            <rect x="-3" y="-12" width="6" height="14" rx="3" transform="rotate(34) translate(14 4)"/>
+          </g>
+
+          <g filter="url(#lshadow)" stroke="#2b1749" stroke-linejoin="round" paint-order="stroke">
+            <!-- SLICED: white block letters with a dark extrusion -->
+            <g stroke-width="12" fill="#2b1749">
+              <use href="#w-sliced" transform="translate(0 12)"/>
+              <use href="#w-sliced" transform="translate(0 10)"/>
+              <use href="#w-sliced" transform="translate(0 8)"/>
+              <use href="#w-sliced" transform="translate(0 6)"/>
+              <use href="#w-sliced" transform="translate(0 4)"/>
+              <use href="#w-sliced" transform="translate(0 2)"/>
+            </g>
+            <use href="#w-sliced" stroke-width="12" fill="#ffffff"/>
+
+            <!-- FRUIT: one fruit colour per letter, same block extrusion -->
+            <g stroke-width="14" fill="#2b1749">
+              <use href="#w-fruit" transform="translate(0 16)"/>
+              <use href="#w-fruit" transform="translate(0 13.5)"/>
+              <use href="#w-fruit" transform="translate(0 11)"/>
+              <use href="#w-fruit" transform="translate(0 8.5)"/>
+              <use href="#w-fruit" transform="translate(0 6)"/>
+              <use href="#w-fruit" transform="translate(0 3.5)"/>
+            </g>
+            <text x="210" y="190" text-anchor="middle" stroke-width="14"
+                  font-family="'Bungee', 'Arial Black', system-ui, sans-serif"
+                  font-weight="400" font-size="100" letter-spacing="3"><tspan fill="#ff4757">F</tspan><tspan fill="#ff922b">R</tspan><tspan fill="#51cf66">U</tspan><tspan fill="#ffd43b">I</tspan><tspan fill="#9c5de8">T</tspan></text>
+          </g>
+        </svg>
+      </h1>
+      <p class="tagline">Place your bet. Slice to collect.</p>
+
+      <div class="menu-card">
+        <div class="menu-balance">Balance&nbsp;<span id="menu-balance">$0.00</span></div>
+        <div id="bet-label">Your bet</div>
+        <div id="bet-chips"></div>
+        <button id="btn-play" class="btn-primary">Bet &amp; Play &middot; 30s</button>
+        <button id="btn-funds" class="btn-ghost hidden">+ Add demo funds</button>
+      </div>
+
+      <div class="menu-spacer"></div>
+      <p class="howto">
+        Slice fruit to spin up prizes. Beware bombs in disguise.
+        Cash out whatever the total shows when time is up.
+      </p>
+      <div class="studio" aria-label="Gnar Labs">
+        <span class="studio-name">GNAR</span><span class="studio-bar"></span><span class="studio-labs">LABS</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="countdown" class="overlay hidden">
+    <div id="count-num">3</div>
+  </div>
+
+  <div id="results" class="overlay hidden">
+    <div class="panel">
+      <h2>Time&rsquo;s up!</h2>
+      <div class="stat"><span>Bet</span><span id="res-bet"></span></div>
+      <div class="stat"><span>Round total</span><span id="res-total"></span></div>
+      <div class="stat big"><span>Payout</span><span id="res-payout"></span></div>
+      <div class="stat"><span>Net</span><span id="res-net"></span></div>
+      <div class="stat"><span>Balance</span><span id="res-balance"></span></div>
+      <button id="btn-again" class="btn-primary">Play again</button>
+      <button id="btn-menu" class="btn-ghost">Menu</button>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
