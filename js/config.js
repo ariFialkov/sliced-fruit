@@ -197,9 +197,15 @@ export const CONFIG = {
     maxBatch: 3,
     maxConcurrent: 7,
     // Menu (ambient) pacing — the attract loop behind the menu.
-    ambientInterval: 1.9,
-    ambientBatch: 2,
-    ambientMaxConcurrent: 5,
+    ambientInterval: 1.6,
+    ambientBatch: 3,
+    ambientMaxConcurrent: 7,
+    decorChance: 0.45,   // chance each ambient batch also launches a pre-sliced fruit
+  },
+
+  // Menu dressing.
+  menu: {
+    confetti: 150,       // drifting coloured cubes filling the menu sky
   },
 
   physics: {

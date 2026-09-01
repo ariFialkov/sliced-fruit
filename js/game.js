@@ -12,18 +12,27 @@ import * as THREE from '../lib/three.module.min.js';
 import { CONFIG } from './config.js';
 import { prepareConfig, RoundDirector, rand, pickWeighted } from './rng.js';
 import { buildWhole, buildHalves, applyGoldSkin, applyGlow } from './fruits.js';
-import { EffectSystem, GoldAura } from './effects.js';
+import { EffectSystem, GoldAura, Confetti } from './effects.js';
 import { Blender } from './blender.js';
 import { PrizeLabel } from './labels.js';
 import { sfxSlice, sfxSplat, sfxBoom, sfxWin, sfxGolden, sfxFrenzy, unlockAudio } from './sfx.js';
 
 const SKY_DAY = ['#6fbdea', '#9ed9f5', '#d6f1fc'];
 const SKY_FRENZY = ['#141033', '#251a4d', '#3a2b66'];
+const SKY_MENU = ['#130b36', '#2a145e', '#4b268c'];
+const CONFETTI_PALETTE = [0xff4757, 0xff922b, 0xffd43b, 0x51cf66, 0x9c5de8, 0xff6b9d, 0x4dabf7];
 
-function lerpHex(a, b, t) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const c = (sh) => Math.round(((pa >> sh) & 255) + (((pb >> sh) & 255) - ((pa >> sh) & 255)) * t);
-  return `rgb(${c(16)},${c(8)},${c(0)})`;
+function hexToRgb(h) {
+  const v = parseInt(h.slice(1), 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+
+function mixRgb(a, b, t) {
+  return a.map((c, i) => c + (b[i] - c) * t);
+}
+
+function rgb(c) {
+  return `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
 }
 
 const BALANCE_KEY = 'sliced-fruit-balance';
@@ -49,12 +58,15 @@ export class Game {
     this.pointerDown = false;
     this.shake = 0;
     this.frenzy = { scheduledAt: null, active: false, until: 0, mix: 0 };
+    this.menuMix = 1;   // 1 = grand purple menu look, 0 = daytime gameplay
+    this.decor = [];    // decorative sliced halves flying behind the menu
 
     this.director = new RoundDirector(this.cfg);
 
     this.initScene(sceneCanvas);
     this.effects = new EffectSystem(this.scene);
     this.blender = this.cfg.blender.enabled ? new Blender(this.scene, this.cfg.blender) : null;
+    this.confetti = new Confetti(this.scene, this.cfg.menu.confetti, CONFETTI_PALETTE);
     this.bindPointer();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -71,12 +83,11 @@ export class Game {
 
     this.scene = new THREE.Scene();
     this.skyCanvas = document.createElement('canvas');
-    this.skyCanvas.width = 2;
+    this.skyCanvas.width = 128;
     this.skyCanvas.height = 512;
     this.skyTex = new THREE.CanvasTexture(this.skyCanvas);
     this.skyTex.colorSpace = THREE.SRGBColorSpace;
     this.scene.background = this.skyTex;
-    this.paintSky(0);
 
     this.camDist = 15;
     this.camY = 2.6;
@@ -92,23 +103,37 @@ export class Game {
     this.fill = new THREE.DirectionalLight(0xfff3d6, 0.55);
     this.fill.position.set(-6, 2, 8);
     this.scene.add(this.fill);
+    this.paintSky(0, this.menuMix);
   }
 
-  // mix 0 = day, 1 = frenzy night. Repaints the sky gradient and dims lights.
-  paintSky(mix) {
+  // Blends the sky between three looks — daytime play, frenzy night, and the
+  // deep-purple menu with its glow rising from the blender — and matches the
+  // lighting to it.
+  paintSky(frenzyMix, menuMix) {
+    const w = this.skyCanvas.width, h = this.skyCanvas.height;
     const ctx = this.skyCanvas.getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 512);
+    const g = ctx.createLinearGradient(0, 0, 0, h);
     SKY_DAY.forEach((day, i) => {
-      g.addColorStop([0, 0.55, 1][i], lerpHex(day, SKY_FRENZY[i], mix));
+      const c = mixRgb(mixRgb(hexToRgb(day), hexToRgb(SKY_FRENZY[i]), frenzyMix), hexToRgb(SKY_MENU[i]), menuMix);
+      g.addColorStop([0, 0.55, 1][i], rgb(c));
     });
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 2, 512);
-    this.skyTex.needsUpdate = true;
-    if (this.hemi) {
-      this.hemi.intensity = THREE.MathUtils.lerp(1.35, 0.5, mix);
-      this.sun.intensity = THREE.MathUtils.lerp(2.3, 0.85, mix);
-      this.fill.intensity = THREE.MathUtils.lerp(0.55, 0.15, mix);
+    ctx.fillRect(0, 0, w, h);
+    if (menuMix > 0.001) {
+      const r = ctx.createRadialGradient(w / 2, h * 0.86, 0, w / 2, h * 0.86, h * 0.62);
+      r.addColorStop(0, `rgba(158,104,255,${0.62 * menuMix})`);
+      r.addColorStop(0.5, `rgba(120,70,220,${0.28 * menuMix})`);
+      r.addColorStop(1, 'rgba(120,70,220,0)');
+      ctx.fillStyle = r;
+      ctx.fillRect(0, 0, w, h);
     }
+    this.skyTex.needsUpdate = true;
+
+    const L = THREE.MathUtils.lerp;
+    this.hemi.intensity = L(L(1.35, 0.5, frenzyMix), 1.1, menuMix);
+    this.sun.intensity = L(L(2.3, 0.85, frenzyMix), 2.05, menuMix);
+    this.fill.intensity = L(L(0.55, 0.15, frenzyMix), 0.5, menuMix);
+    this.hemi.groundColor.set(0xa8c8dd).lerp(new THREE.Color(0x6a3fb0), Math.max(frenzyMix, menuMix));
   }
 
   resize() {
@@ -126,6 +151,7 @@ export class Game {
     if (this.blender) {
       this.blender.group.position.y = this.camY - this.halfH + this.cfg.blender.rimOffset;
     }
+    this.confetti?.setBounds(this.halfW, this.camY - this.halfH, this.camY + this.halfH);
   }
 
   worldToScreen(pos) {
@@ -295,6 +321,45 @@ export class Game {
     this.fruits.push(fruit);
   }
 
+  // Menu dressing: an already-sliced fruit tumbling through the air, halves
+  // slightly parted so the cut faces show. Purely decorative — no label, no
+  // slicing, no value.
+  spawnDecor() {
+    const def = pickWeighted(this.cfg.fruits, f => f.weight);
+    const { a, b, axis } = buildHalves(def);
+    a.position.addScaledVector(axis, def.radius * 0.45);
+    b.position.addScaledVector(axis, -def.radius * 0.45);
+    const group = new THREE.Group();
+    group.add(a, b);
+    group.rotation.set(rand(-0.6, 0.6), rand(0.6, 1.4) * (Math.random() < 0.5 ? 1 : -1), rand(-0.4, 0.4));
+    const x = rand(-this.halfW * 0.7, this.halfW * 0.7);
+    group.position.set(x, this.camY - this.halfH - 1.5, rand(-1.2, 0.4));
+    this.scene.add(group);
+    const ph = this.cfg.physics;
+    this.decor.push({
+      group,
+      vel: new THREE.Vector3(-x * rand(0.05, 0.2), rand(ph.launchYMin * 0.9, ph.launchYMax), 0),
+      angVel: new THREE.Vector3(rand(-1.2, 1.2), rand(-1.2, 1.2), rand(-1.2, 1.2)),
+    });
+  }
+
+  updateDecor(dt) {
+    const g = this.cfg.physics.gravity;
+    const kill = this.camY - this.halfH - 2.5;
+    for (let i = this.decor.length - 1; i >= 0; i--) {
+      const d = this.decor[i];
+      d.vel.y -= g * dt;
+      d.group.position.addScaledVector(d.vel, dt);
+      d.group.rotation.x += d.angVel.x * dt;
+      d.group.rotation.y += d.angVel.y * dt;
+      d.group.rotation.z += d.angVel.z * dt;
+      if (d.vel.y < 0 && d.group.position.y < kill) {
+        this.scene.remove(d.group);
+        this.decor.splice(i, 1);
+      }
+    }
+  }
+
   removeFruit(fruit, keepLabel) {
     this.scene.remove(fruit.group);
     if (fruit.aura) {
@@ -322,6 +387,7 @@ export class Game {
     if (ambient) {
       batch = 1 + Math.floor(rand(0, s.ambientBatch));
       this.spawnTimer = s.ambientInterval * rand(0.7, 1.3);
+      if (this.mode === 'ambient' && Math.random() < s.decorChance) this.spawnDecor();
     } else {
       const p = this.elapsed / this.cfg.roundSeconds;
       batch = Math.round(rand(s.minBatch, s.minBatch + (s.maxBatch - s.minBatch) * p));
@@ -396,7 +462,8 @@ export class Game {
         (d.remaining <= cfg.lateSeconds && Math.abs(gap) > d.share * cfg.lateThreshold);
       if (hungry) huntX = this.predictCatchX(gap);
     }
-    b.update(dt, { halfW: this.halfW, huntX });
+    b.setBeam(this.menuMix);
+    b.update(dt, { halfW: this.halfW, huntX, park: this.mode === 'ambient' });
   }
 
   // Where should the blender stand to swallow the soonest reachable fruit?
@@ -612,18 +679,25 @@ export class Game {
       if (this.elapsed >= this.cfg.roundSeconds) this.endRound();
     }
 
-    // ease the sky between day and frenzy night
-    const targetMix = this.frenzy.active ? 1 : 0;
-    if (Math.abs(this.frenzy.mix - targetMix) > 0.001) {
-      const step = dt * 1.6;
-      this.frenzy.mix += Math.sign(targetMix - this.frenzy.mix) * Math.min(step, Math.abs(targetMix - this.frenzy.mix));
-      this.paintSky(this.frenzy.mix);
+    // ease the sky between menu purple, daytime play, and frenzy night
+    const ease = (cur, target, rate) => {
+      const d = target - cur;
+      return Math.abs(d) < 0.001 ? target : cur + Math.sign(d) * Math.min(rate * dt, Math.abs(d));
+    };
+    const fz = ease(this.frenzy.mix, this.frenzy.active ? 1 : 0, 1.6);
+    const mm = ease(this.menuMix, this.mode === 'ambient' ? 1 : 0, 0.9);
+    if (fz !== this.frenzy.mix || mm !== this.menuMix) {
+      this.frenzy.mix = fz;
+      this.menuMix = mm;
+      this.paintSky(fz, mm);
     }
 
     this.updateSpawning(dt);
     this.updateBlender(dt);
     this.updateFruits(dt);
+    this.updateDecor(dt);
     this.effects.update(dt, this.cfg.physics.gravity);
+    this.confetti.update(dt, this.menuMix);
     this.drawTrail();
 
     // camera shake after bombs

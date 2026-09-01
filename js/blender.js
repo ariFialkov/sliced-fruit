@@ -27,6 +27,38 @@ const bladeMat = new THREE.MeshStandardMaterial({
   color: 0xe6ecf5, roughness: 0.2, metalness: 0.85,
 });
 
+// Vertical alpha gradient: solid at the jar mouth, fading out upward.
+function beamTexture() {
+  const c = document.createElement('canvas');
+  c.width = 4;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, 'rgba(255,255,255,0)');
+  g.addColorStop(0.55, 'rgba(255,255,255,0.35)');
+  g.addColorStop(1, 'rgba(255,255,255,0.9)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 2, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)');
+  g.addColorStop(0.4, 'rgba(255,255,255,0.35)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Blender {
   constructor(scene, cfg) {
     this.cfg = cfg;
@@ -103,8 +135,36 @@ export class Blender {
     light.position.set(0, -H - 0.45, R * 1.02);
     g.add(light);
 
+    // menu showpiece: a light beam rising out of the jar plus a glow at the
+    // mouth (see setBeam); both invisible during play
+    this.beamMat = new THREE.MeshBasicMaterial({
+      map: beamTexture(), color: 0x9a7cff, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const beamH = 9;
+    this.beam = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.55, R * 0.8, beamH, 36, 1, true), this.beamMat);
+    this.beam.position.y = beamH / 2 - 0.1;
+    this.beam.renderOrder = 4;
+    g.add(this.beam);
+
+    this.mouthGlowMat = new THREE.SpriteMaterial({
+      map: glowTexture(), color: 0xc4b0ff, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    this.mouthGlow = new THREE.Sprite(this.mouthGlowMat);
+    this.mouthGlow.scale.setScalar(R * 5.2);
+    this.mouthGlow.position.y = 0.2;
+    this.mouthGlow.renderOrder = 4;
+    g.add(this.mouthGlow);
+    this.beamStrength = 0;
+
     scene.add(g);
     this.syncJuice();
+  }
+
+  // 0 = off (gameplay), 1 = full menu showpiece.
+  setBeam(strength) {
+    this.beamStrength = strength;
   }
 
   syncJuice() {
@@ -127,7 +187,7 @@ export class Blender {
     this.syncJuice();
   }
 
-  update(dt, { halfW, huntX }) {
+  update(dt, { halfW, huntX, park = false }) {
     this.t += dt;
     const cfg = this.cfg;
     const limit = Math.max(0.5, halfW - this.radius - 0.3);
@@ -135,10 +195,19 @@ export class Blender {
     this.hunting = huntX !== null && huntX !== undefined;
     if (this.hunting) {
       this.targetX = THREE.MathUtils.clamp(huntX, -limit, limit);
+    } else if (park) {
+      // menu: sit centre stage under the title
+      this.targetX = 0;
     } else {
       // lazy patrol across the play area
       this.targetX = Math.sin(this.t * 0.42) * limit * 0.72;
     }
+
+    const bs = this.beamStrength;
+    this.beamMat.opacity = bs * (0.34 + 0.06 * Math.sin(this.t * 2.1));
+    this.mouthGlowMat.opacity = bs * (0.55 + 0.12 * Math.sin(this.t * 2.6));
+    this.beam.visible = bs > 0.01;
+    this.mouthGlow.visible = bs > 0.01;
 
     const speed = this.hunting ? cfg.huntSpeed : cfg.patrolSpeed;
     const dx = this.targetX - this.x;

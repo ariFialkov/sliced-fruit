@@ -24,9 +24,10 @@ device you'll need HTTPS (any static host works: GitHub Pages, Netlify, etc.).
 
 ## Game flow
 
-1. **Menu** — attract screen with fruit popping up behind it, rolling prize
-   indicators included. Pick your bet, then start the round — the bet is
-   debited up front.
+1. **Menu** — a night-sky attract screen: the blender sits centre stage
+   under a light beam, confetti drifts, and whole fruit and pre-sliced halves
+   tumble past with rolling prize indicators. Pick your bet, then start the
+   round — the bet is debited up front and the sky fades to day.
 2. **30-second round** — swipe to slice. Each sliced fruit rolls a share of
    the bet (`bet / expectedSlices × fruit.valueFactor × multiplier`), positive
    or negative, into your round total.

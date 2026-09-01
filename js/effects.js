@@ -64,6 +64,76 @@ function sparkleTexture() {
   return sparkleTexMemo;
 }
 
+// --- confetti ----------------------------------------------------------------
+// Slowly drifting coloured cubes that fill the menu sky. One instanced mesh,
+// scaled to zero when `strength` is 0 so it costs nothing during play.
+
+export class Confetti {
+  constructor(scene, count, palette) {
+    this.count = count;
+    this.mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.15, 0.15, 0.15),
+      new THREE.MeshStandardMaterial({ roughness: 0.5, emissive: 0x2a2a2a }),
+      count,
+    );
+    this.mesh.frustumCulled = false;
+    this.items = [];
+    const color = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      this.items.push({
+        pos: new THREE.Vector3(),
+        rot: new THREE.Euler(rand(0, 6.3), rand(0, 6.3), rand(0, 6.3)),
+        spin: new THREE.Vector3(rand(-1.2, 1.2), rand(-1.2, 1.2), rand(-1.2, 1.2)),
+        rise: rand(0.25, 0.7),
+        sway: rand(0.4, 1.1),
+        phase: rand(0, 6.3),
+        size: rand(0.45, 1.25),
+      });
+      this.mesh.setColorAt(i, color.set(palette[i % palette.length]));
+    }
+    this.mesh.instanceColor.needsUpdate = true;
+    this.bounds = { halfW: 8, bottom: -4, top: 9 };
+    this.seeded = false;
+    this.t = 0;
+    this.dummy = new THREE.Object3D();
+    scene.add(this.mesh);
+  }
+
+  setBounds(halfW, bottom, top) {
+    this.bounds = { halfW, bottom, top };
+    if (!this.seeded) {
+      for (const it of this.items) {
+        it.pos.set(rand(-halfW, halfW), rand(bottom, top), rand(-3.5, 2.5));
+      }
+      this.seeded = true;
+    }
+  }
+
+  update(dt, strength) {
+    this.t += dt;
+    this.mesh.visible = strength > 0.01;
+    if (!this.mesh.visible) return;
+    const { halfW, bottom, top } = this.bounds;
+    for (let i = 0; i < this.count; i++) {
+      const it = this.items[i];
+      it.pos.y += it.rise * dt;
+      it.pos.x += Math.sin(this.t * it.sway + it.phase) * 0.35 * dt;
+      if (it.pos.y > top + 1) {
+        it.pos.set(rand(-halfW, halfW), bottom - 1, rand(-3.5, 2.5));
+      }
+      it.rot.x += it.spin.x * dt;
+      it.rot.y += it.spin.y * dt;
+      it.rot.z += it.spin.z * dt;
+      this.dummy.position.copy(it.pos);
+      this.dummy.rotation.copy(it.rot);
+      this.dummy.scale.setScalar(it.size * strength);
+      this.dummy.updateMatrix();
+      this.mesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
 export class GoldAura {
   constructor(radius) {
     this.group = new THREE.Group();
